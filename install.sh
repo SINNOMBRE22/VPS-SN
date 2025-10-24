@@ -1,7 +1,7 @@
 #!/bin/bash
 # VPS-SN - Instalador Unificado
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 02:41:15 UTC
+# Fecha: 2025-10-24 02:51:32 UTC
 # Configuración de módulos
 module="$(pwd)/module"
 rm -rf ${module}
@@ -10,15 +10,6 @@ wget -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Her
 chmod +x ${module} &>/dev/null
 source ${module}
 
-# Función para finalizar correctamente
-CTRL_C() {
-  rm -rf ${module}
-  rm -rf /root/VPS-SN
-  exit
-}
-trap "CTRL_C" INT TERM EXIT
-rm $(pwd)/$0 &>/dev/null
-
 # Verificar si es root
 if [ $(whoami) != 'root' ]; then
   echo ""
@@ -26,16 +17,22 @@ if [ $(whoami) != 'root' ]; then
   exit
 fi
 
+# Función para finalizar correctamente
+CTRL_C() {
+  rm -rf ${module}
+  rm -rf /root/VPS-SN
+  exit
+}
+trap "CTRL_C" INT TERM EXIT
+
 # Configuración de directorios VPS-SN
 VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
 VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
 SCPinstal="$HOME/install"
 
-# Zona horaria por defecto
 # Zona horaria por defecto a Ciudad de México
 rm -rf /etc/localtime &>/dev/null
 ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
-rm $(pwd)/$0 &> /dev/null
 
 # Función para detener instalación
 stop_install(){
@@ -207,29 +204,47 @@ install_continue(){
   sleep 2
   tput cuu1 && tput dl1
   print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
+  msgi -bar2
   enter
 }
 
 # Menú de opciones
-while :
-do
-  case $1 in
-    -s|--start)install_start && post_reboot && time_reboot "15";;
-    -c|--continue)rm /root/install.sh &> /dev/null
-                  sed -i '/VPS-SN/d' /root/.bashrc
-                  install_continue
-                  install_VPS_SN
-                  break;;
-    -u|--update)install_start
-                install_continue
-                install_VPS_SN
-                break;;
-    *)install_VPS_SN;;
-  esac
-done
-
-# Fin del instalador
-title "VPS-SN INSTALADO"
-print_center -verd "Instalacion completada exitosamente"
-msg -bar
-time_reboot "10"
+case $1 in
+  -s|--start)
+    install_start
+    post_reboot
+    time_reboot "15"
+    ;;
+  -c|--continue)
+    rm /root/install.sh &> /dev/null
+    sed -i '/VPS-SN/d' /root/.bashrc
+    install_continue
+    install_VPS_SN
+    rm $(pwd)/$0 &> /dev/null
+    msgi -bar2
+    title "VPS-SN INSTALADO"
+    print_center -verd "Instalacion completada exitosamente"
+    msg -bar
+    time_reboot "10"
+    ;;
+  -u|--update)
+    install_start
+    install_continue
+    install_VPS_SN
+    rm $(pwd)/$0 &> /dev/null
+    msgi -bar2
+    title "VPS-SN INSTALADO"
+    print_center -verd "Instalacion completada exitosamente"
+    msg -bar
+    time_reboot "10"
+    ;;
+  *)
+    install_VPS_SN
+    rm $(pwd)/$0 &> /dev/null
+    msgi -bar2
+    title "VPS-SN INSTALADO"
+    print_center -verd "Instalacion completada exitosamente"
+    msg -bar
+    time_reboot "10"
+    ;;
+esac
