@@ -1,294 +1,297 @@
 #!/bin/bash
-# VPS-SN - Instalador Unificado para Ubuntu 22.04
-# Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 03:45:22 UTC
-# Sistema: Ubuntu 22.04 LTS
-
-# Configuración de módulos
-module="$(pwd)/module"
-rm -rf ${module}
-wget -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" &>/dev/null
-[[ ! -e ${module} ]] && exit
-chmod +x ${module} &>/dev/null
-source ${module}
-
-# Función para finalizar correctamente
-CTRL_C() {
-  rm -rf ${module}
-  rm -rf /root/VPS-SN
-  exit
-}
-trap "CTRL_C" INT TERM EXIT
-rm $(pwd)/$0 &>/dev/null
-
-# Verificar si es root
-if [ $(whoami) != 'root' ]; then
-  echo ""
-  echo -e "\e[1;31m NECESITAS SER USER ROOT PARA EJECUTAR EL SCRIPT \n\n\e[97m                DIGITE: \e[1;32m sudo su\n"
-  exit
-fi
-
-# Configuración de directorios VPS-SN
-VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
-VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
-SCPinstal="$HOME/install"
-
-# Zona horaria por defecto a Ciudad de México
-rm -rf /etc/localtime &>/dev/null
-ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
-rm $(pwd)/$0 &> /dev/null
-
-# Función para detener instalación
-stop_install(){
-  print_center -verm2 "INSTALACION CANCELADA"
-  exit
-}
-
-# Función para pausar y esperar Enter
-enter(){
-  echo -e "\033[1;97m Presione ENTER para continuar... \033[0m"
-  read
-}
-
-# Función de reinicio
-time_reboot(){
-  print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
-  REBOOT_TIMEOUT="$1"
-  
-  while [ $REBOOT_TIMEOUT -gt 0 ]; do
-    print_center -ne "-$REBOOT_TIMEOUT-\r"
-    sleep 1
-    : $((REBOOT_TIMEOUT--))
-  done
-  reboot
-}
-
-# Detectar sistema operativo
-os_system(){
-  system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //')
-  distro=$(echo "$system"|awk '{print $1}')
-
-  case $distro in
-    Debian)vercion=$(echo $system|awk '{print $3}'|cut -d '.' -f1);;
-    Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);;
-  esac
-}
-
-# Actualizar repositorios
-update_repos(){
-  echo -e "\033[1;36m Actualizando repositorios de Ubuntu 22.04...\033[0m"
-  apt update -y >/dev/null 2>&1
-  apt upgrade -y >/dev/null 2>&1
-  echo -e "\033[1;32m ✓ Repositorios actualizados\033[0m"
-}
-
-# Instalar dependencias específicas para Ubuntu 22.04
-dependencias_ubuntu_22(){
-  # Paquetes básicos que SÍ existen en Ubuntu 22.04
-  soft="sudo bsdmainutils zip unzip curl python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq git htop vim tmux psmisc wget net-tools socat"
-
-  echo -e "\033[1;36m Instalando paquetes base...\033[0m"
-  
-  for i in $soft; do
-    leng="${#i}"
-    puntos=$(( 25 - $leng))
-    pts=""
-    for (( a = 0; a < $puntos; a++ )); do
-      pts+="."
-    done
-    
-    echo -ne "\033[1;33m instalando \033[1;36m$i\033[1;33m$pts\033[0m"
-    
-    if apt install -y $i &>/dev/null ; then
-      echo -e "\r\033[1;33m instalando \033[1;36m$i\033[1;33m$pts\033[1;32m[OK]\033[0m"
-    else
-      echo -e "\r\033[1;33m instalando \033[1;36m$i\033[1;33m$pts\033[1;31m[FAIL]\033[0m"
-      echo -e "\033[1;33m Intentando solucionar...\033[0m"
-      dpkg --configure -a &>/dev/null
+ 
+ module="$(pwd)/module"
+ rm -rf ${module}
+ wget -O ${module} "https://raw.githubusercontent.com/rudi9999/Herramientas/main/module/module" &>/dev/null
+ [[ ! -e ${module} ]] && exit
+ chmod +x ${module} &>/dev/null
+ source ${module}
+ 
+ CTRL_C(){
+   rm -rf ${module}; exit
+ }
+ 
+ trap "CTRL_C" INT TERM EXIT
+ 
+ ADMRufu="/etc/ADMRufu" && [[ ! -d ${ADMRufu} ]] && mkdir ${ADMRufu}
+ ADM_inst="${ADMRufu}/install" && [[ ! -d ${ADM_inst} ]] && mkdir ${ADM_inst}
+ SCPinstal="$HOME/install"
+ 
+ rm -rf /etc/localtime &>/dev/null
+ ln -s /usr/share/zoneinfo/America/Argentina/Tucuman /etc/localtime &>/dev/null
+ rm $(pwd)/$0 &> /dev/null
+ 
+ stop_install(){
+  	title "INSTALACION CANCELADA"
+  	exit
+  }
+ 
+ time_reboot(){
+   print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
+   REBOOT_TIMEOUT="$1"
+   
+   while [ $REBOOT_TIMEOUT -gt 0 ]; do
+      print_center -ne "-$REBOOT_TIMEOUT-\r"
       sleep 1
-      
-      echo -ne "\033[1;33m reintentando \033[1;36m$i\033[1;33m$pts\033[0m"
-      if apt install -y $i &>/dev/null ; then
-        echo -e "\r\033[1;33m reintentando \033[1;36m$i\033[1;33m$pts\033[1;32m[OK]\033[0m"
-      else
-        echo -e "\r\033[1;33m reintentando \033[1;36m$i\033[1;33m$pts\033[1;31m[SKIP]\033[0m"
-      fi
-    fi
-  done
-  
-  # Paquetes opcionales que pueden no estar disponibles
-  echo -e "\n\033[1;36m Instalando paquetes opcionales...\033[0m"
-  
-  paquetes_opcionales="figlet lolcat cowsay npm nodejs netcat-openbsd ufw"
-  
-  for paq in $paquetes_opcionales; do
-    leng="${#paq}"
-    puntos=$(( 25 - $leng))
-    pts=""
-    for (( a = 0; a < $puntos; a++ )); do
-      pts+="."
+      : $((REBOOT_TIMEOUT--))
+   done
+   reboot
+ }
+ 
+ os_system(){
+   system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //')
+   distro=$(echo "$system"|awk '{print $1}')
+ 
+   case $distro in
+     Debian)vercion=$(echo $system|awk '{print $3}'|cut -d '.' -f1);;
+     Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);;
+   esac
+ }
+ 
+ repo(){
+   link="https://raw.githubusercontent.com/rudi9999/ADMRufu/main/Repositorios/$1.list"
+   case $1 in
+     8|9|10|11|16.04|18.04|20.04|20.10|21.04|21.10|22.04)wget -O /etc/apt/sources.list ${link} &>/dev/null;;
+   esac
+ }
+ 
+ dependencias(){
+ 	soft="sudo bsdmainutils zip unzip ufw curl python python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat"
+ 
+ 	for i in $soft; do
+ 		leng="${#i}"
+ 		puntos=$(( 21 - $leng))
+ 		pts="."
+ 		for (( a = 0; a < $puntos; a++ )); do
+ 			pts+="."
+ 		done
+ 		msg -nazu "       instalando $i$(msg -ama "$pts")"
+ 		if apt install $i -y &>/dev/null ; then
+ 			msg -verd "INSTALL"
+ 		else
+ 			msg -verm2 "FAIL"
+ 			sleep 2
+ 			tput cuu1 && tput dl1
+ 			print_center -ama "aplicando fix a $i"
+ 			dpkg --configure -a &>/dev/null
+ 			sleep 2
+ 			tput cuu1 && tput dl1
+ 
+ 			msg -nazu "       instalando $i$(msg -ama "$pts")"
+ 			if apt install $i -y &>/dev/null ; then
+ 				msg -verd "INSTALL"
+ 			else
+ 				msg -verm2 "FAIL"
+ 			fi
+ 		fi
+ 	done
+ }
+ 
+ ofus () {
+   unset server
+   server=$(echo ${txt_ofuscatw}|cut -d':' -f1)
+   unset txtofus
+   number=$(expr length $1)
+   for((i=1; i<$number+1; i++)); do
+     txt[$i]=$(echo "$1" | cut -b $i)
+     case ${txt[$i]} in
+       ".")txt[$i]="*";;
+       "*")txt[$i]=".";;
+       "_")txt[$i]="@";;
+       "@")txt[$i]="_";;
+       #"1")txt[$i]="@";;
+       #"@")txt[$i]="1";;
+       #"2")txt[$i]="?";;
+       #"?")txt[$i]="2";;
+       #"4")txt[$i]="%";;
+       #"%")txt[$i]="4";;
+       "-")txt[$i]="K";;
+       "K")txt[$i]="-";;
+       "1")txt[$i]="f";;
+       "2")txt[$i]="e";;
+       "3")txt[$i]="d";;
+       "4")txt[$i]="c";;
+       "5")txt[$i]="b";;
+       "6")txt[$i]="a";;
+       "7")txt[$i]="9";;
+       "8")txt[$i]="8";;
+       "9")txt[$i]="7";;
+       "a")txt[$i]="6";;
+       "b")txt[$i]="5";;
+       "c")txt[$i]="4";;
+       "d")txt[$i]="3";;
+       "e")txt[$i]="2";;
+       "f")txt[$i]="1";;
+     esac
+     txtofus+="${txt[$i]}"
+   done
+   echo "$txtofus" | rev
+ }
+ 
+ function_verify () {
+   permited=$(curl -sSL "https://raw.githubusercontent.com/rudi9999/Control/master/Control-IP")
+   [[ $(echo $permited|grep "${IP}") = "" ]] && {
+     clear
+     msg -bar
+     print_center -verm2 "¡LA IP $(wget -qO- ipv4.icanhazip.com) NO ESTA AUTORIZADA!"
+     print_center -ama "CONTACTE A @Rufu99"
+     msg -bar
+   	rm ${ADMRufu}
+     [[ -e $HOME/lista-arq ]] && rm $HOME/lista-arq
+     exit
+   } || {
+   ### INTALAR VERCION DE SCRIPT
+   ver=$(curl -sSL "https://raw.githubusercontent.com/rudi9999/ADMRufu/main/vercion")
+   echo "$ver" > ${ADMRufu}/vercion
+   }
+ }
+ 
+ fun_ip(){
+     MEU_IP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1)
+     MEU_IP2=$(wget -qO- ipv4.icanhazip.com)
+     [[ "$MEU_IP" != "$MEU_IP2" ]] && IP="$MEU_IP2" || IP="$MEU_IP"
+ }
+ 
+ verificar_arq(){
+ 	unset ARQ
+ 	case $1 in
+ 		menu|menu_inst.sh|tool_extras.sh|chekup.sh)ARQ="${ADMRufu}";;
+ 		*)ARQ="${ADM_inst}";;
+ 	esac
+ 	mv -f ${SCPinstal}/$1 ${ARQ}/$1
+ 	chmod +x ${ARQ}/$1
+ }
+ 
+ error_fun(){
+ 	msg -bar3
+ 	print_center -verm "ERROR de enlace VPS<-->GENERADOR"
+ 	msg -bar3
+ 	[[ -d ${SCPinstal} ]] && rm -rf ${SCPinstal}
+ 	exit
+ }
+ 
+ post_reboot(){
+   echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/rudi9999/ADMRufu/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
+   title "INSTALADOR ADMRufu"
+   print_center -ama "La instalacion continuara\ndespues del reinicio!!!"
+   msg -bar
+ }
+ 
+ install_start(){
+   title "INSTALADOR ADMRufu"
+   print_center -ama "A continuacion se actualizaran los paquetes\ndel systema. Esto podria tomar tiempo,\ny requerir algunas preguntas\npropias de las actualizaciones."
+   msg -bar3
+   msg -ne " Desea continuar? [S/N]: "
+   read opcion
+   [[ "$opcion" != @(s|S) ]] && stop_install
+   title "INSTALADOR ADMRufu"
+   os_system
+   repo "${vercion}"
+   apt update -y; apt upgrade -y  
+ }
+ 
+ install_continue(){
+   os_system
+   title "INSTALADOR ADMRufu"
+   print_center -ama "$distro $vercion"
+   print_center -verd "INSTALANDO DEPENDENCIAS"
+   msg -bar3
+   dependencias
+   msg -bar3
+   print_center -azu "Removiendo paquetes obsoletos"
+   apt autoremove -y &>/dev/null
+   sleep 2
+   tput cuu1 && tput dl1
+   print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
+   enter
+ }
+ 
+ while :
+ do
+   case $1 in
+     -s|--start)install_start && post_reboot && time_reboot "15";;
+     -c|--continue)rm /root/install.sh &> /dev/null
+                   sed -i '/Rufu/d' /root/.bashrc
+                   install_continue
+                   break;;
+     -u|--update)install_start
+                 install_continue
+                 break;;
+     *)exit;;
+   esac
+ done
+ 
+ title "INSTALADOR ADMRufu"
+ fun_ip
+ while [[ ! $Key ]]; do
+ 	echo -e "  $(msg -verm3 "╭╼╼╼╼╼╼╼╼╼╼╼╼╼╼╼╼[")$(msg -azu "INGRESA TU KEY")$(msg -verm3 "]")"
+ 	echo -ne "  $(msg -verm3 "╰╼")\033[37;1m>\e[32m\e[1m "
+ 	read Key
+ done
+ msg -bar3
+ msg -ne " Verificando Key: "
+ cd $HOME
+ wget -O $HOME/lista-arq $(ofus "$Key")/$IP > /dev/null 2>&1 && msg -verd "Key Completa" || {
+    msg -verm2 "Key Invalida"
+    msg -bar
+    [[ -e $HOME/lista-arq ]] && rm $HOME/lista-arq
+    exit
+    }
+ msg -bar3
+ 
+ IP=$(ofus "$Key" | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}') && echo "$IP" > /usr/bin/vendor_code
+ sleep 1s
+ function_verify
+ 
+ if [[ -e $HOME/lista-arq ]] && [[ ! $(cat $HOME/lista-arq|grep "KEY INVALIDA!") ]]; then
+ 
+    msg -verd " INSTALANDO SCRIPT ADMRufu... $(msg -ama "[Proyect by @Rufu99]")"
+    REQUEST=$(ofus "$Key"|cut -d'/' -f2)
+    [[ ! -d ${SCPinstal} ]] && mkdir ${SCPinstal}
+    msg -nama "Descarga de archivos...  "
+    for arqx in $(cat $HOME/lista-arq); do
+     wget --no-check-certificate -O ${SCPinstal}/${arqx} ${IP}:81/${REQUEST}/${arqx} > /dev/null 2>&1 && {
+     verificar_arq "${arqx}"
+    } || {
+     msg -verm2 "fallida!!!"
+     sleep 2s
+     error_fun
+    }
     done
-    
-    echo -ne "\033[1;33m instalando \033[1;36m$paq\033[1;33m$pts\033[0m"
-    
-    if apt install -y $paq &>/dev/null ; then
-      echo -e "\r\033[1;33m instalando \033[1;36m$paq\033[1;33m$pts\033[1;32m[OK]\033[0m"
-    else
-      echo -e "\r\033[1;33m instalando \033[1;36m$paq\033[1;33m$pts\033[1;31m[OPTIONAL]\033[0m"
-    fi
-  done
-  
-  echo ""
-  echo -e "\033[1;32m ✓ Instalación de dependencias completada\033[0m"
-}
-
-# Instalar VPS-SN sin validación de KEY
-install_VPS_SN() {
-  clear && clear
-  msgi -bar2 2>/dev/null || echo "===================================================="
-  echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
-  tput cuu1 && tput dl1 2>/dev/null
-  echo -e "$slogan"
-  msgi -bar2 2>/dev/null || echo "===================================================="
-  clear && clear
-  
-  mkdir -p /etc/VPS-SN/tmp >/dev/null 2>&1
-  
-  echo -e "\033[1;36m Iniciando descarga de archivos VPS-SN...\033[0m"
-  
-  cd /etc
-  echo -ne "\033[1;33m Descargando VPS-SN.tar.xz...\033[0m"
-  
-  # Intentar descargar desde GitHub
-  if wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz; then
-    echo -e "\r\033[1;32m ✓ Descarga exitosa\033[0m"
-    
-    echo -ne "\033[1;33m Extrayendo archivos...\033[0m"
-    if tar -xf VPS-SN.tar.xz >/dev/null 2>&1; then
-      echo -e "\r\033[1;32m ✓ Archivos extraidos\033[0m"
-      rm -rf VPS-SN.tar.xz
-    else
-      echo -e "\r\033[1;31m ✗ Error extrayendo archivos\033[0m"
-      mkdir -p /etc/VPS-SN/install
-    fi
+    msg -verd "completa!!!"
+    sleep 2s
+    rm $HOME/lista-arq
+    [[ -d ${SCPinstal} ]] && rm -rf ${SCPinstal}
+    rm -rf /usr/bin/menu
+    rm -rf /usr/bin/adm
+    rm -rf /usr/bin/ADMRufu
+    echo "${ADMRufu}/menu" > /usr/bin/menu && chmod +x /usr/bin/menu
+    echo "${ADMRufu}/menu" > /usr/bin/adm && chmod +x /usr/bin/adm
+    echo "${ADMRufu}/menu" > /usr/bin/ADMRufu && chmod +x /usr/bin/ADMRufu
+    sed -i '/Rufu/d' /root/bash.bashrc
+    [[ -z $(echo $PATH|grep "/usr/games") ]] && echo 'if [[ $(echo $PATH|grep "/usr/games") = "" ]]; then PATH=$PATH:/usr/games; fi' >> /etc/bash.bashrc
+    echo '[[ $UID = 0 ]] && screen -dmS up /etc/ADMRufu/chekup.sh' >> /etc/bash.bashrc
+    echo 'v=$(cat /etc/ADMRufu/vercion)' >> /etc/bash.bashrc
+    echo '[[ -e /etc/ADMRufu/new_vercion ]] && up=$(cat /etc/ADMRufu/new_vercion) || up=$v' >> /etc/bash.bashrc
+    echo -e "[[ \$(date '+%s' -d \$up) -gt \$(date '+%s' -d \$(cat /etc/ADMRufu/vercion)) ]] && v2=\"Nueva Vercion disponible: \$v >>> \$up\" || v2=\"Script Vercion: \$v\"" >> /etc/bash.bashrc
+    echo '[[ -e "/etc/ADMRufu/tmp/message.txt" ]] && mess1="$(less /etc/ADMRufu/tmp/message.txt)"' >> /etc/bash.bashrc
+    echo '[[ -z "$mess1" ]] && mess1="@Rufu99"' >> /etc/bash.bashrc
+    echo 'clear && echo -e "\n$(figlet -f big.flf "  ADMRufu")\n        RESELLER : $mess1 \n\n   Para iniciar ADMRufu escriba:  menu \n\n   $v2\n\n"|lolcat' >> /etc/bash.bashrc
+ 
+    update-locale LANG=en_US.UTF-8 LANGUAGE=en
+    clear
+    title "-- ADMRufu INSTALADO --"
   else
-    echo -e "\r\033[1;31m ✗ Error en descarga, usando fallback\033[0m"
-    mkdir -p /etc/VPS-SN/install
-  fi
-  
-  cd
-  chmod -R 755 /etc/VPS-SN
-  
-  # Limpiar comandos antiguos
-  rm -rf /usr/bin/menu 2>/dev/null
-  rm -rf /usr/bin/adm 2>/dev/null
-  rm -rf /usr/bin/VPS-SN 2>/dev/null
-  
-  # Guardar slogan
-  echo "$slogan" >/etc/VPS-SN/tmp/message.txt
-  
-  # Crear comandos de usuario
-  echo "#!/bin/bash" > /usr/bin/menu
-  echo "exec ${VPS_SN}/menu \"\$@\"" >> /usr/bin/menu
-  chmod +x /usr/bin/menu
-  
-  cp /usr/bin/menu /usr/bin/adm
-  cp /usr/bin/menu /usr/bin/VPS-SN
-  
-  # Configurar .bashrc
-  echo "" >> /etc/bash.bashrc
-  echo '# VPS-SN Configuration' >> /etc/bash.bashrc
-  echo 'export PATH=$PATH:/usr/games' >> /etc/bash.bashrc
-  echo '[[ $UID = 0 ]] && screen -dmS up /etc/VPS-SN/chekup.sh' >> /etc/bash.bashrc
-  echo 'v=$(cat /etc/VPS-SN/vercion 2>/dev/null || echo "1.0.0")' >> /etc/bash.bashrc
-  echo '[[ -e /etc/VPS-SN/new_vercion ]] && up=$(cat /etc/VPS-SN/new_vercion) || up=$v' >> /etc/bash.bashrc
-  echo -e "[[ \$(date '+%s' -d \$up) -gt \$(date '+%s' -d \$(cat /etc/VPS-SN/vercion 2>/dev/null)) ]] && v2=\"Nueva Vercion disponible: \$v >>> \$up\" || v2=\"Script Vercion: \$v\"" >> /etc/bash.bashrc
-  echo '[[ -e "/etc/VPS-SN/tmp/message.txt" ]] && mess1="$(cat /etc/VPS-SN/tmp/message.txt)"' >> /etc/bash.bashrc
-  echo '[[ -z "$mess1" ]] && mess1="@Sin_Nombre22"' >> /etc/bash.bashrc
-  echo 'clear && echo -e "\n\033[1;36m╔════════════════════════════════════╗\033[0m\n\033[1;36m║\033[1;32m       VPS-SN Panel Control\033[1;36m        ║\033[0m\n\033[1;36m╚════════════════════════════════════╝\033[0m\n\033[1;32m  RESELLER: $mess1\033[0m\n\n\033[1;33m  Para iniciar VPS-SN escriba: \033[1;32mmenu\033[0m\n\n\033[1;36m  $v2\033[0m\n\n"' >> /etc/bash.bashrc
-  
-  # Establecer locale
-  update-locale LANG=en_US.UTF-8 LANGUAGE=en 2>/dev/null
-  
-  clear && clear
-  msgi -bar2 2>/dev/null || echo "===================================================="
-  echo -e "\e[1;92m             >> INSTALACION COMPLETADA <<" 
-  msgi -bar2 2>/dev/null || echo "===================================================="
-  echo -e "\033[1;36m      COMANDO PRINCIPAL PARA ENTRAR AL PANEL\033[0m"
-  echo -e "                 \033[1;41m  menu  \033[0;37m"
-  echo -e "\033[1;36m            Reseller: $slogan\033[0m"
-  msgi -bar2 2>/dev/null || echo "===================================================="
-}
-
-# Configurar reinicio con continuación
-post_reboot(){
-  echo 'wget -q -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
-  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
-  print_center -ama "La instalacion continuara\ndespues del reinicio!!!" 2>/dev/null || echo "Continuando tras reboot..."
-  msg -bar 2>/dev/null || echo "===================================================="
-}
-
-# Iniciar instalación
-install_start(){
-  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
-  print_center -ama "Sistema detectado: Ubuntu 22.04 LTS\n\nA continuacion se actualizaran los paquetes\ndel sistema. Esto podria tomar tiempo." 2>/dev/null
-  msg -bar3 2>/dev/null || echo "===================================================="
-  msg -ne " ¿Desea continuar? [S/N]: " 2>/dev/null || echo -n "¿Continuar? [S/N]: "
-  read opcion
-  [[ "$opcion" != @(s|S) ]] && stop_install
-  
-  update_repos
-}
-
-# Continuar instalación
-install_continue(){
-  os_system
-  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
-  print_center -ama "Sistema: Ubuntu 22.04 LTS" 2>/dev/null || echo "Ubuntu 22.04 LTS"
-  print_center -verd "INSTALANDO DEPENDENCIAS" 2>/dev/null || echo "INSTALANDO DEPENDENCIAS"
-  msg -bar3 2>/dev/null || echo "===================================================="
-  
-  dependencias_ubuntu_22
-  
-  msg -bar3 2>/dev/null || echo "===================================================="
-  echo -e "\033[1;36m Realizando limpieza de paquetes obsoletos...\033[0m"
-  apt autoremove -y &>/dev/null
-  apt autoclean -y &>/dev/null
-  echo -e "\033[1;32m ✓ Limpieza completada\033[0m"
-  
-  echo ""
-  print_center -ama "Si alguna dependencia fallo, puede instalarla\nmanualmente con: apt install nombre_paquete" 2>/dev/null
-  enter
-}
-
-# Menú de opciones principal
-while :
-do
-  case $1 in
-    -s|--start)install_start && post_reboot && time_reboot "15";;
-    -c|--continue)
-      rm /root/install.sh &> /dev/null
-      sed -i '/VPS-SN/d' /root/.bashrc 2>/dev/null
-      install_continue
-      install_VPS_SN
-      break
-      ;;
-    -u|--update)
-      install_start
-      install_continue
-      install_VPS_SN
-      break
-      ;;
-    *)install_VPS_SN;;
-  esac
-done
-
-# Fin del instalador
-clear
-echo -e "\033[1;32m════════════════════════════════════════════════════\033[0m"
-echo -e "\033[1;36m      VPS-SN INSTALADO EXITOSAMENTE\033[0m"
-echo -e "\033[1;32m════════════════════════════════════════════════════\033[0m"
-echo -e "\033[1;33m\n Comando para iniciar: \033[1;32mmenu\033[0m"
-echo -e "\033[1;33m Reseller: \033[1;32m$slogan\033[0m\n"
-msg -bar 2>/dev/null || echo "════════════════════════════════════════════════════"
-time_reboot "10"
+   [[ -e $HOME/lista-arq ]] && rm $HOME/lista-arq
+   clear
+   msg -bar
+   print_center -verm2 "KEY INVALIDA"
+   msg -bar
+   print_center -ama "Esta key no es valida o ya fue usada"
+   print_center -ama "Contacta con @Rufu99"
+   msg -bar
+   rm -rf ${module}
+   exit
+ fi
+ mv -f ${module} /etc/ADMRufu/module
+ time_reboot "10" 
