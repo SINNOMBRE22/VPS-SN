@@ -80,7 +80,7 @@ SEMCOR='\e[0m'
   -azu)cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
   -verd)cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
   -bra)cor="${COLOR[0]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-  "-bar2"|"-bar")cor="${COLOR[1]}=====================================================" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+  "-bar2"|"-bar")cor="${COLOR[1]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
   -bar3)cor="${COLOR[1]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
  esac
 }
