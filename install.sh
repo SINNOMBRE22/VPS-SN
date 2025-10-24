@@ -1,378 +1,297 @@
 #!/bin/bash
+# MULTI-SCRIPT - Instalador Unificado
+# ACTUALIZADO EL 24-10-2025 -- By @Kalix1
 
-# VPS-SN - Instalador Unificado COMPLETO
-# Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 04:38:52 UTC
-# Corrección: Sin dependencia del módulo al inicio
+clear && clear
+colores="$(pwd)/colores"
+rm -rf ${colores}
+wget -O ${colores} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" &>/dev/null
+[[ ! -e ${colores} ]] && exit
+chmod +x ${colores} &>/dev/null
+source ${colores}
 
-# Funciones de colores INDEPENDIENTES (NO dependen del módulo)
-msg(){
-  COLOR[0]='\033[1;37m'
-  COLOR[1]='\e[31m'
-  COLOR[2]='\e[32m'
-  COLOR[3]='\e[33m'
-  COLOR[4]='\e[34m'
-  COLOR[5]='\e[91m'
-  COLOR[6]='\033[1;97m'
-  COLOR[7]='\e[36m'
-  COLOR[8]='\e[30m'
-  COLOR[9]='\033[34m'
+CTRL_C() {
+  rm -rf ${colores}
+  rm -rf /root/LATAM
+  exit
+}
+trap "CTRL_C" INT TERM EXIT
+rm $(pwd)/$0 &>/dev/null
 
-  NEGRITO='\e[1m'
-  SEMCOR='\e[0m'
+#-- VERIFICAR ROOT
+if [ $(whoami) != 'root' ]; then
+  echo ""
+  echo -e "\e[1;31m NECESITAS SER USER ROOT PARA EJECUTAR EL SCRIPT \n\n\e[97m                DIGITE: \e[1;32m sudo su\n"
+  exit
+fi
 
-  case $1 in
-    -ne)   cor="${COLOR[1]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
-    -nazu) cor="${COLOR[6]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
-    -nverd)cor="${COLOR[2]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
-    -nama) cor="${COLOR[3]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
-    -ama)  cor="${COLOR[3]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -verm) cor="${COLOR[3]}${NEGRITO}[!] ${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}";;
-    -verm2)cor="${COLOR[1]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -verm3)cor="${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}";;
-    -teal) cor="${COLOR[7]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -teal2)cor="${COLOR[7]}" && echo -e "${cor}${2}${SEMCOR}";;
-    -blak) cor="${COLOR[8]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -blak2)cor="${COLOR[8]}" && echo -e "${cor}${2}${SEMCOR}";;
-    -azu)  cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -blu)  cor="${COLOR[9]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -blu1) cor="${COLOR[9]}" && echo -e "${cor}${2}${SEMCOR}";;
-    -verd) cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -bra)  cor="${COLOR[0]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-    -bar)  cor="${COLOR[1]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
-    -bar2) cor="${COLOR[7]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
-    -bar3) cor="${COLOR[1]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
-    -bar4) cor="${COLOR[7]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+# ========== CONFIGURACIÓN DE PATHS (DEL SCRIPT 2) ==========
+VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
+VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
+SCPinstal="$HOME/install"
+
+# ========== CONFIGURACIÓN DE ZONA HORARIA (DEL SCRIPT 2) ==========
+rm -rf /etc/localtime &>/dev/null
+ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
+
+# ========== FUNCIONES (LÓGICA DEL SCRIPT 1) ==========
+os_system() {
+  system=$(cat -n /etc/issue | grep 1 | cut -d ' ' -f6,7,8 | sed 's/1//' | sed 's/      //')
+  distro=$(echo "$system" | awk '{print $1}')
+
+  case $distro in
+  Debian) vercion=$(echo $system | awk '{print $3}' | cut -d '.' -f1) ;;
+  Ubuntu) vercion=$(echo $system | awk '{print $2}' | cut -d '.' -f1,2) ;;
   esac
 }
 
-# Centrado de texto
-print_center(){
-  if [[ -z $2 ]]; then
-    text="$1"
-  else
-    col="$1"
-    text="$2"
-  fi
+repo() {
+  link="https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Repositorios/$1.list"
+  case $1 in
+  8 | 9 | 10 | 11 | 16.04 | 18.04 | 20.04 | 20.10 | 21.04 | 21.10 | 22.04) wget -O /etc/apt/sources.list ${link} &>/dev/null ;;
+  esac
+}
 
-  while read line; do
-    unset space
-    x=$(( ( 54 - ${#line}) / 2))
-    for (( i = 0; i < $x; i++ )); do
-      space+=' '
-    done
-    space+="$line"
-    if [[ -z $2 ]]; then
-      msg -azu "$space"
+## PRIMER PASO DE INSTALACION (LÓGICA SCRIPT 1)
+install_inicial() {
+  clear && clear
+  #--VERIFICAR IP MANUAL (LÓGICA SCRIPT 1)
+  tu_ip() {
+    echo ""
+    echo -ne "\e[1;96m #Digite tu IP Publica (IPV4): \e[32m" && read IP
+    val_ip() {
+      local ip=$IP
+      local stat=1
+      if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        OIFS=$IFS
+        IFS='.'
+        ip=($ip)
+        IFS=$OIFS
+        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
+        stat=$?
+      fi
+      return $stat
+    }
+    if val_ip $IP; then
+      echo "$IP" >/root/.ssh/authrized_key.reg
     else
-      msg "$col" "$space"
+      echo ""
+      echo -e "\e[31mLa IP Digitada no es valida, Verifiquela"
+      echo ""
+      sleep 5s
+      fun_ip
     fi
-  done <<< $(echo -e "$text")
-}
-
-# Titulos
-title(){
-    clear
-    msg -bar
-    if [[ -z $2 ]]; then
-      print_center -azu "$1"
-    else
-      print_center "$1" "$2"
-    fi
-    msg -bar
-}
-
-# Pausa
-enter(){
-  msg -bar
-  text="►► Presione enter para continuar ◄◄"
-  if [[ -z $1 ]]; then
-    print_center -ama "$text"
-  else
-    print_center "$1" "$text"
-  fi
-  read
-}
-
-# Exportar funciones
-export -f msg
-export -f print_center
-export -f title
-export -f enter
-
-# Ahora sí cargar el módulo
-module="$(pwd)/module"
-rm -rf ${module} 2>/dev/null
-
-msg -azu "Descargando módulo..."
-if wget -q -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" 2>/dev/null; then
-  if [[ -e ${module} ]] && [[ -s ${module} ]]; then
-    chmod +x ${module} 2>/dev/null
-    source ${module}
-    msg -verd "Módulo cargado"
-  else
-    msg -verm2 "Módulo vacío, continuando con funciones locales"
-  fi
-else
-  msg -verm2 "No se pudo descargar módulo, usando funciones locales"
-fi
-
-CTRL_C(){
-  echo ""
-  msg -verm2 "Instalación cancelada"
-  rm -rf ${module} 2>/dev/null
-  exit 1
-}
-
-trap "CTRL_C" INT TERM EXIT
-
-# Verificar si es root
-if [[ $(whoami) != 'root' ]]; then
-  msg -verm2 "Este script debe ejecutarse como root"
-  echo "Usa: sudo su"
-  exit 1
-fi
-
-# Variables globales
-VPS_SN="/etc/VPS-SN"
-VPS_inst="${VPS_SN}/install"
-SCPinstal="$HOME/install"
-
-# Crear directorios
-mkdir -p ${VPS_SN} ${VPS_inst} ${SCPinstal} 2>/dev/null
-
-# Zona horaria
-rm -rf /etc/localtime 2>/dev/null
-ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime 2>/dev/null
-msg -verd "Zona horaria: Mexico_City"
-
-# Detectar sistema operativo
-os_system(){
-  if [[ -f /etc/issue ]]; then
-    system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //')
-    distro=$(echo "$system"|awk '{print $1}')
-    
-    case $distro in
-      Debian)vercion=$(echo $system|awk '{print $3}'|cut -d '.' -f1);;
-      Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);;
-      *)vercion="unknown";;
-    esac
-  fi
-}
-
-time_reboot(){
-  local REBOOT_TIMEOUT=$1
-  print_center -ama "REINICIANDO VPS EN $REBOOT_TIMEOUT SEGUNDOS"
+  }
   
-  while [[ $REBOOT_TIMEOUT -gt 0 ]]; do
-    echo -ne "\r-$REBOOT_TIMEOUT- segundos"
-    sleep 1
-    ((REBOOT_TIMEOUT--))
-  done
+  #CONFIGURAR SSH-ROOT PRINCIPAL (LÓGICA SCRIPT 1)
+  pass_root() {
+    wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/sshd_config >/dev/null 2>&1
+    chmod +rwx /etc/ssh/sshd_config
+    service ssh restart
+    msgi -bar
+    echo -ne "\e[1;97m DIGITE NUEVA CONTRASEÑA:  \e[1;31m" && read pass
+    (
+      echo $pass
+      echo $pass
+    ) | passwd root 2>/dev/null
+    sleep 1s
+    msgi -bar
+    echo -e "\e[1;94m     CONTRASEÑA AGREGADA O EDITADA CORECTAMENTE"
+    echo -e "\e[1;97m TU CONTRASEÑA ROOT AHORA ES: \e[41m $pass \e[0;37m"
+  }
+  
+  #-- VERIFICAR VERSION (LÓGICA SCRIPT 1)
+  v1=$(curl -sSL "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Vercion")
+  echo "$v1" >/etc/version_instalacion
+  v22=$(cat /etc/version_instalacion)
+  vesaoSCT="\e[1;31m [ \e[1;32m( $v22 )\e[1;97m\e[1;31m ]"
+  
+  #-- CONFIGURACION BASICA (LÓGICA SCRIPT 1)
+  os_system
+  repo "${vercion}"
+  msgi -bar2
+  echo -e " \e[5m\e[1;100m   =====>> ►►     VPS-SN SCRIPT     ◄◄ <<=====    \e[1;37m"
+  msgi -bar2
+  msgi -ama "   PREPARANDO INSTALACION | VERSION: $vesaoSCT"
+  
+  ## PAQUETES PRINCIPALES (LÓGICA SCRIPT 1)
   echo ""
+  echo -e "\e[1;97m         🔎 IDENTIFICANDO SISTEMA OPERATIVO"
+  echo -e "\e[1;32m                 | $distro $vercion |"
+  echo ""
+  echo -e "\e[1;97m        ◽️ DESACTIVANDO PASS ALFANUMERICO "
+  [[ $(dpkg --get-selections | grep -w "libpam-cracklib" | head -1) ]] || barra_intallb "apt-get install libpam-cracklib -y &>/dev/null"
+  echo -e '# Modulo Pass Simple
+password [success=1 default=ignore] pam_unix.so obscure sha512
+password requisite pam_deny.so
+password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pam.d/common-password
+  [[ $(dpkg --get-selections | grep -w "libpam-cracklib" | head -1) ]] && barra_intallb "date"
+  service ssh restart >/dev/null 2>&1
+  echo ""
+  msgi -bar2
+  
+  fun_ip() {
+    TUIP=$(wget -qO- ifconfig.me)
+    echo "$TUIP" >/root/.ssh/authrized_key.reg
+    echo -e "\e[1;97m ESTA ES TU IP PUBLICA? \e[32m$TUIP"
+    msgi -bar2
+    echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read tu_ip
+    [[ "$tu_ip" = "n" || "$tu_ip" = "N" ]] && tu_ip
+  }
+  fun_ip
+  
+  msgi -bar2
+  echo -e "\e[1;93m             AGREGAR Y EDITAR PASS ROOT\e[1;97m"
+  msgi -bar
+  echo -e "\e[1;97m CAMBIAR PASS ROOT? \e[32m"
+  msgi -bar2
+  echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read pass_root
+  [[ "$pass_root" = "s" || "$pass_root" = "S" ]] && pass_root
+  
+  msgi -bar2
+  echo -e "\e[1;93m\a\a\a      SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES\n PERTINENTES DEL SISTEMA, ESTE PROCESO PUEDE TARDAR\n VARIOS MINUTOS Y PUEDE PEDIR ALGUNAS CONFIRMACIONES \e[0;37m"
+  msgi -bar
+  read -t 120 -n 1 -rsp $'\e[1;97m           Preciona Enter Para continuar\n'
+  clear && clear
+  apt update
+  apt upgrade -y
+  wget -O /usr/bin/install https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh &>/dev/null
+  chmod +rwx /usr/bin/install
+}
+
+time_reboot() {
+  clear && clear
+  msgi -bar
+  echo -e "\e[1;93m     CONTINUARA INSTALACION DESPUES DEL REBOOT"
+  echo -e "\e[1;93m         O EJECUTE EL COMANDO: \e[1;92mVPS-SN --continue "
+  msgi -bar
+  REBOOT_TIMEOUT="$1"
+  while [ $REBOOT_TIMEOUT -gt 0 ]; do
+    print_center -ne "-$REBOOT_TIMEOUT-\r"
+    sleep 1
+    : $((REBOOT_TIMEOUT--))
+  done
   reboot
 }
 
-dependencias(){
-  title "INSTALANDO DEPENDENCIAS"
-  
-  soft="sudo bsdmainutils zip unzip curl python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq git htop vim tmux psmisc wget net-tools figlet lolcat"
+dependencias() {
+  rm -rf /root/paknoinstall.log >/dev/null 2>&1
+  rm -rf /root/packinstall.log >/dev/null 2>&1
+  dpkg --configure -a >/dev/null 2>&1
+  apt -f install -y >/dev/null 2>&1
+  soft="sudo bsdmainutils zip screen unzip ufw curl python python3 python3-pip openssl cron iptables lsof pv boxes at mlocate gawk bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat apache2"
 
-  total=$(echo $soft | wc -w)
-  count=0
-  
-  for paquete in $soft; do
-    count=$((count + 1))
-    pct=$((count * 100 / total))
-    
-    leng="${#paquete}"
-    puntos=$(( 21 - $leng))
-    pts="."
-    for (( a = 0; a < $puntos; a++ )); do
-      pts+="."
-    done
-    
-    msg -nazu "       instalando $paquete$(msg -ama "$pts")"
-    
-    if apt-get install -y $paquete >/dev/null 2>&1; then
-      msg -verd "INSTALL"
-    else
-      msg -verm2 "FAIL"
-      sleep 1
-      tput cuu1 && tput dl1
-      dpkg --configure -a >/dev/null 2>&1
-      sleep 1
-      tput cuu1 && tput dl1
-      
-      msg -nazu "       reintentando $paquete$(msg -ama "$pts")"
-      if apt-get install -y $paquete >/dev/null 2>&1; then
-        msg -verd "INSTALL"
-      else
-        msg -verm2 "SKIP"
-      fi
-    fi
+  for i in $soft; do
+    paquete="$i"
+    echo -e "\e[1;97m        INSTALANDO PAQUETE \e[93m ------ \e[36m $i"
+    barra_intall "apt-get install $i -y"
   done
-  
-  msg -bar
-  msg -verd "Dependencias instaladas"
+  rm -rf /root/paknoinstall.log >/dev/null 2>&1
+  rm -rf /root/packinstall.log >/dev/null 2>&1
 }
 
-install_VPS_SN(){
-  clear
-  msg -bar2
-  echo -ne "\033[1;97m Digite su slogan: \033[1;32m"
-  read -r slogan
+install_paquetes() {
+  clear && clear
+  /bin/cp /etc/skel/.bashrc ~/
+  msgi -bar2
+  echo -e " \e[5m\e[1;100m   =====>> ►►     VPS-SN SCRIPT     ◄◄ <<=====    \e[1;37m"
+  msgi -bar
+  echo -e "   \e[1;41m    -- INSTALACION PAQUETES FALTANTES --    \e[49m"
+  msgi -bar
+  dependencias
+  sed -i "s;Listen 80;Listen 81;g" /etc/apache2/ports.conf >/dev/null 2>&1
+  service apache2 restart >/dev/null 2>&1
+  [[ $(sudo lsof -i :81) ]] || ESTATUSP=$(echo -e "\e[1;91m      >>>  FALLO DE INSTALACION EN APACHE <<<") &>/dev/null
+  [[ $(sudo lsof -i :81) ]] && ESTATUSP=$(echo -e "\e[1;92m          PUERTO APACHE ACTIVO CON EXITO") &>/dev/null
+  echo ""
+  echo -e "$ESTATUSP"
+  echo ""
+  echo -e "\e[1;97m        REMOVIENDO PAQUETES OBSOLETOS - \e[1;32m OK"
+  apt autoremove -y &>/dev/null
+  echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+  echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+  msgi -bar2
+  read -t 30 -n 1 -rsp $'\e[1;97m           Preciona Enter Para continuar\n'
+}
+
+# ========== INSTALACIÓN VPS-SN (RUTAS DEL SCRIPT 2) ==========
+install_VPS_SN() {
+  clear && clear
+  msgi -bar2
+  echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
+  tput cuu1 && tput dl1
+  echo -e "$slogan"
+  msgi -bar2
+  clear && clear
   
-  if [[ -z "$slogan" ]]; then
-    slogan="@Sin_Nombre22"
-  fi
+  mkdir /etc/VPS-SN >/dev/null 2>&1
+  mkdir /etc/VPS-SN/tmp >/dev/null 2>&1
   
-  echo -e "\033[0m"
-  msg -bar2
-  clear
-  
-  msg -azu "Creando directorios..."
-  mkdir -p ${VPS_SN}/tmp >/dev/null 2>&1
-  msg -verd "OK"
-  
-  msg -azu "Descargando VPS-SN.tar.xz..."
   cd /etc
+  wget https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz >/dev/null 2>&1
   
-  if wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz 2>/dev/null; then
-    msg -verd "OK"
-    
-    msg -azu "Extrayendo archivos..."
-    if tar -xf VPS-SN.tar.xz >/dev/null 2>&1; then
-      msg -verd "OK"
-      rm -rf VPS-SN.tar.xz
-    else
-      msg -verm2 "Error extrayendo"
-      mkdir -p ${VPS_SN}/install
-    fi
+  if [[ -e VPS-SN.tar.xz ]]; then
+    tar -xf VPS-SN.tar.xz >/dev/null 2>&1
+    rm -rf VPS-SN.tar.xz
   else
-    msg -verm2 "Error descargando"
-    mkdir -p ${VPS_SN}/install
+    mkdir -p /etc/VPS-SN/install
   fi
   
-  cd ~
-  chmod -R 755 ${VPS_SN}
+  cd
+  chmod -R 755 /etc/VPS-SN
   
-  msg -azu "Limpiando comandos antiguos..."
-  rm -rf /usr/bin/menu /usr/bin/adm /usr/bin/VPS-SN 2>/dev/null
-  msg -verd "OK"
+  rm -rf /usr/bin/menu
+  rm -rf /usr/bin/adm
+  rm -rf /usr/bin/VPS-SN
   
-  msg -azu "Guardando slogan..."
-  echo "$slogan" > ${VPS_SN}/tmp/message.txt
-  msg -verd "OK"
+  echo "$slogan" >/etc/VPS-SN/tmp/message.txt
+  echo "${VPS_SN}/menu" >/usr/bin/menu && chmod +x /usr/bin/menu
+  echo "${VPS_SN}/menu" >/usr/bin/adm && chmod +x /usr/bin/adm
+  echo "${VPS_SN}/menu" >/usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
   
-  msg -azu "Creando comandos de usuario..."
-  echo "${VPS_SN}/menu" > /usr/bin/menu && chmod +x /usr/bin/menu
-  echo "${VPS_SN}/menu" > /usr/bin/adm && chmod +x /usr/bin/adm
-  echo "${VPS_SN}/menu" > /usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
-  msg -verd "OK"
-  
-  msg -azu "Configurando .bashrc..."
-  {
-    echo ""
-    echo '# VPS-SN Configuration'
-    echo 'export PATH=$PATH:/usr/games'
-    echo '[[ $UID = 0 ]] && screen -dmS up /etc/VPS-SN/chekup.sh'
-    echo 'v=$(cat /etc/VPS-SN/vercion 2>/dev/null || echo "1.0.0")'
-    echo '[[ -e /etc/VPS-SN/new_vercion ]] && up=$(cat /etc/VPS-SN/new_vercion) || up=$v'
-    echo '[[ -e "/etc/VPS-SN/tmp/message.txt" ]] && mess1="$(cat /etc/VPS-SN/tmp/message.txt)"'
-    echo '[[ -z "$mess1" ]] && mess1="@Sin_Nombre22"'
-    echo 'clear && echo -e "\n$(figlet -f big.flf "  VPS-SN" 2>/dev/null || echo "VPS-SN")\n        RESELLER : $mess1 \n\n   Para iniciar VPS-SN escriba:  menu \n\n"'
-  } >> /etc/bash.bashrc
-  msg -verd "OK"
-  
-  msg -azu "Estableciendo locale..."
-  update-locale LANG=en_US.UTF-8 LANGUAGE=en 2>/dev/null
-  msg -verd "OK"
-  
+  [[ -z $(echo $PATH|grep "/usr/games") ]] && echo 'if [[ $(echo $PATH|grep "/usr/games") = "" ]]; then PATH=$PATH:/usr/games; fi' >> /etc/bash.bashrc
+  echo '[[ $UID = 0 ]] && screen -dmS up /etc/VPS-SN/chekup.sh' >> /etc/bash.bashrc
+  echo 'v=$(cat /etc/VPS-SN/vercion)' >> /etc/bash.bashrc
+  echo '[[ -e /etc/VPS-SN/new_vercion ]] && up=$(cat /etc/VPS-SN/new_vercion) || up=$v' >> /etc/bash.bashrc
+  echo -e "[[ \$(date '+%s' -d \$up) -gt \$(date '+%s' -d \$(cat /etc/VPS-SN/vercion)) ]] && v2=\"Nueva Vercion disponible: \$v >>> \$up\" || v2=\"Script Vercion: \$v\"" >> /etc/bash.bashrc
+  echo '[[ -e "/etc/VPS-SN/tmp/message.txt" ]] && mess1="$(less /etc/VPS-SN/tmp/message.txt)"' >> /etc/bash.bashrc
+  echo '[[ -z "$mess1" ]] && mess1="@Sin_Nombre22"' >> /etc/bash.bashrc
+  echo 'clear && echo -e "\n$(figlet -f big.flf "  VPS-SN")\n        RESELLER : $mess1 \n\n   Para iniciar VPS-SN escriba:  menu \n\n   $v2\n\n"|lolcat' >> /etc/bash.bashrc
+
+  update-locale LANG=en_US.UTF-8 LANGUAGE=en
   clear
-  msg -bar2
-  echo -e "\033[1;32m             >> INSTALACION COMPLETADA <<"
-  msg -bar2
+  msgi -bar2
+  echo -e "\e[1;92m             >> VPS-SN INSTALADO BY @Sin_Nombre22 <<" && msgi -bar2
   echo -e "      COMANDO PRINCIPAL PARA ENTRAR AL PANEL "
-  echo -e "                      \033[1;41m  menu  \033[0;37m"
-  echo -e "                 Reseller: $slogan"
-  msg -bar2
+  echo -e "                      \033[1;41m  menu  \033[0;37m" && msgi -bar2
 }
 
-post_reboot(){
-  echo 'wget -q -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh" && chmod +x /root/install.sh && /root/install.sh --continue' >> /root/.bashrc
-}
-
-install_start(){
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "A continuacion se actualizaran los paquetes del sistema.\nEsto podria tomar tiempo."
-  msg -bar3
-  
-  echo -ne "\033[1;37m Desea continuar? [S/N]: "
-  read -r opcion
-  
-  if [[ "$opcion" != @(s|S) ]]; then
-    title "INSTALACION CANCELADA"
-    exit 1
-  fi
-  
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  os_system
-  
-  msg -azu "Sistema detectado: $distro $vercion"
-  
-  msg -azu "Ejecutando: apt-get update -y"
-  apt-get update -y >/dev/null 2>&1
-  msg -verd "OK"
-  
-  msg -azu "Ejecutando: apt-get upgrade -y"
-  DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1
-  msg -verd "OK"
-  
-  msg -bar
-  post_reboot
-}
-
-# FLUJO PRINCIPAL
-case "${1:-}" in
-  -s|--start)
-    msg -azu "Iniciando instalación..."
-    install_start
-    time_reboot "15"
+# ========== SELECTOR DE INSTALACION (LÓGICA SCRIPT 1 ADAPTADA) ==========
+while :; do
+  case $1 in
+  -s | --start)
+    install_inicial && install_paquetes
+    break
     ;;
-    
-  -c|--continue)
-    msg -azu "Continuando instalación..."
-    rm -f /root/install.sh 2>/dev/null
-    sed -i '/VPS-SN/d' /root/.bashrc 2>/dev/null
-    os_system
-    dependencias
-    install_VPS_SN
-    msg -bar
-    msg -verd "VPS-SN instalado exitosamente"
-    time_reboot "10"
+  -c | --continue)
+    install_paquetes
+    break
     ;;
-    
-  -u|--update)
-    msg -azu "Actualizando VPS-SN..."
-    install_start
-    dependencias
-    install_VPS_SN
-    msg -bar
-    msg -verd "VPS-SN actualizado exitosamente"
-    time_reboot "10"
+  -m | --menu)
+    break
     ;;
-    
-  *)
-    msg -azu "Ejecutando instalación directa..."
-    install_start
-    post_reboot
-    time_reboot "15"
-    ;;
-esac
+  *) 
+    # Si no hay argumentos, mostrar opciones
+    echo -e "\e[1;93mOpciones disponibles:"
+    echo -e "\e[1;92m  -s, --start    \e[1;97m- Instalación inicial completa"
+    echo -e "\e[1;92m  -c, --continue \e[1;97m- Continuar instalación después de reboot"
+    echo -e "\e[1;92m  -m, --menu     \e[1;97m- Entrar al menu principal"
+    exit ;;
+  esac
+done
 
-# Limpiar
-rm -f $(pwd)/$0 2>/dev/null
-mv -f ${module} /etc/VPS-SN/module 2>/dev/null
+# ========== INSTALAR VPS-SN AL FINAL ==========
+install_VPS_SN
 
-exit 0
+mv -f ${colores} /etc/VPS-SN/module
+time_reboot "10"
