@@ -2,51 +2,124 @@
 
 # VPS-SN - Instalador Unificado COMPLETO
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 04:36:18 UTC
-# Correcciones: msgi → msg, apt → apt-get
+# Fecha: 2025-10-24 04:38:52 UTC
+# Corrección: Sin dependencia del módulo al inicio
 
-set -e  # Salir si hay error
+# Funciones de colores INDEPENDIENTES (NO dependen del módulo)
+msg(){
+  COLOR[0]='\033[1;37m'
+  COLOR[1]='\e[31m'
+  COLOR[2]='\e[32m'
+  COLOR[3]='\e[33m'
+  COLOR[4]='\e[34m'
+  COLOR[5]='\e[91m'
+  COLOR[6]='\033[1;97m'
+  COLOR[7]='\e[36m'
+  COLOR[8]='\e[30m'
+  COLOR[9]='\033[34m'
 
+  NEGRITO='\e[1m'
+  SEMCOR='\e[0m'
+
+  case $1 in
+    -ne)   cor="${COLOR[1]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
+    -nazu) cor="${COLOR[6]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
+    -nverd)cor="${COLOR[2]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
+    -nama) cor="${COLOR[3]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}";;
+    -ama)  cor="${COLOR[3]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -verm) cor="${COLOR[3]}${NEGRITO}[!] ${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}";;
+    -verm2)cor="${COLOR[1]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -verm3)cor="${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}";;
+    -teal) cor="${COLOR[7]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -teal2)cor="${COLOR[7]}" && echo -e "${cor}${2}${SEMCOR}";;
+    -blak) cor="${COLOR[8]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -blak2)cor="${COLOR[8]}" && echo -e "${cor}${2}${SEMCOR}";;
+    -azu)  cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -blu)  cor="${COLOR[9]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -blu1) cor="${COLOR[9]}" && echo -e "${cor}${2}${SEMCOR}";;
+    -verd) cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -bra)  cor="${COLOR[0]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
+    -bar)  cor="${COLOR[1]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+    -bar2) cor="${COLOR[7]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+    -bar3) cor="${COLOR[1]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+    -bar4) cor="${COLOR[7]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+  esac
+}
+
+# Centrado de texto
+print_center(){
+  if [[ -z $2 ]]; then
+    text="$1"
+  else
+    col="$1"
+    text="$2"
+  fi
+
+  while read line; do
+    unset space
+    x=$(( ( 54 - ${#line}) / 2))
+    for (( i = 0; i < $x; i++ )); do
+      space+=' '
+    done
+    space+="$line"
+    if [[ -z $2 ]]; then
+      msg -azu "$space"
+    else
+      msg "$col" "$space"
+    fi
+  done <<< $(echo -e "$text")
+}
+
+# Titulos
+title(){
+    clear
+    msg -bar
+    if [[ -z $2 ]]; then
+      print_center -azu "$1"
+    else
+      print_center "$1" "$2"
+    fi
+    msg -bar
+}
+
+# Pausa
+enter(){
+  msg -bar
+  text="►► Presione enter para continuar ◄◄"
+  if [[ -z $1 ]]; then
+    print_center -ama "$text"
+  else
+    print_center "$1" "$text"
+  fi
+  read
+}
+
+# Exportar funciones
+export -f msg
+export -f print_center
+export -f title
+export -f enter
+
+# Ahora sí cargar el módulo
 module="$(pwd)/module"
 rm -rf ${module} 2>/dev/null
 
-# Funciones básicas de mensajes (en caso de fallo del módulo)
-msg_info() {
-  echo -e "\033[1;36m[INFO]\033[0m $1"
-}
-
-msg_error() {
-  echo -e "\033[1;31m[ERROR]\033[0m $1"
-}
-
-msg_ok() {
-  echo -e "\033[1;32m[OK]\033[0m $1"
-}
-
-msg_warning() {
-  echo -e "\033[1;33m[WARNING]\033[0m $1"
-}
-
-# Intentar descargar módulo
-msg_info "Descargando módulo..."
+msg -azu "Descargando módulo..."
 if wget -q -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" 2>/dev/null; then
-  msg_ok "Módulo descargado"
   if [[ -e ${module} ]] && [[ -s ${module} ]]; then
     chmod +x ${module} 2>/dev/null
     source ${module}
-    msg_ok "Módulo cargado exitosamente"
+    msg -verd "Módulo cargado"
   else
-    msg_error "Módulo descargado pero vacío"
-    exit 1
+    msg -verm2 "Módulo vacío, continuando con funciones locales"
   fi
 else
-  msg_error "No se pudo descargar el módulo"
-  exit 1
+  msg -verm2 "No se pudo descargar módulo, usando funciones locales"
 fi
 
 CTRL_C(){
   echo ""
-  msg_error "Instalación cancelada por usuario"
+  msg -verm2 "Instalación cancelada"
   rm -rf ${module} 2>/dev/null
   exit 1
 }
@@ -55,7 +128,7 @@ trap "CTRL_C" INT TERM EXIT
 
 # Verificar si es root
 if [[ $(whoami) != 'root' ]]; then
-  msg_error "Este script debe ejecutarse como root"
+  msg -verm2 "Este script debe ejecutarse como root"
   echo "Usa: sudo su"
   exit 1
 fi
@@ -71,7 +144,7 @@ mkdir -p ${VPS_SN} ${VPS_inst} ${SCPinstal} 2>/dev/null
 # Zona horaria
 rm -rf /etc/localtime 2>/dev/null
 ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime 2>/dev/null
-msg_ok "Zona horaria configurada a Mexico_City"
+msg -verd "Zona horaria: Mexico_City"
 
 # Detectar sistema operativo
 os_system(){
@@ -89,10 +162,10 @@ os_system(){
 
 time_reboot(){
   local REBOOT_TIMEOUT=$1
-  msg_info "REINICIANDO VPS EN $REBOOT_TIMEOUT SEGUNDOS"
+  print_center -ama "REINICIANDO VPS EN $REBOOT_TIMEOUT SEGUNDOS"
   
   while [[ $REBOOT_TIMEOUT -gt 0 ]]; do
-    echo -ne "\r${REBOOT_TIMEOUT} segundos..."
+    echo -ne "\r-$REBOOT_TIMEOUT- segundos"
     sleep 1
     ((REBOOT_TIMEOUT--))
   done
@@ -112,25 +185,36 @@ dependencias(){
     count=$((count + 1))
     pct=$((count * 100 / total))
     
-    printf "\r\033[1;36m[${pct}%%]\033[0m Instalando \033[1;33m$paquete\033[0m..."
+    leng="${#paquete}"
+    puntos=$(( 21 - $leng))
+    pts="."
+    for (( a = 0; a < $puntos; a++ )); do
+      pts+="."
+    done
+    
+    msg -nazu "       instalando $paquete$(msg -ama "$pts")"
     
     if apt-get install -y $paquete >/dev/null 2>&1; then
-      printf "\r\033[1;32m[${pct}%%]\033[0m Instalando \033[1;33m$paquete\033[0m \033[1;32m[OK]\033[0m\n"
+      msg -verd "INSTALL"
     else
-      printf "\r\033[1;33m[${pct}%%]\033[0m Instalando \033[1;33m$paquete\033[0m \033[1;31m[RETRY]\033[0m"
+      msg -verm2 "FAIL"
+      sleep 1
+      tput cuu1 && tput dl1
       dpkg --configure -a >/dev/null 2>&1
       sleep 1
+      tput cuu1 && tput dl1
       
+      msg -nazu "       reintentando $paquete$(msg -ama "$pts")"
       if apt-get install -y $paquete >/dev/null 2>&1; then
-        printf "\r\033[1;32m[${pct}%%]\033[0m Instalando \033[1;33m$paquete\033[0m \033[1;32m[OK]\033[0m\n"
+        msg -verd "INSTALL"
       else
-        printf "\r\033[1;33m[${pct}%%]\033[0m Instalando \033[1;33m$paquete\033[0m \033[1;33m[SKIP]\033[0m\n"
+        msg -verm2 "SKIP"
       fi
     fi
   done
   
   msg -bar
-  msg_ok "Instalación de dependencias completada"
+  msg -verd "Dependencias instaladas"
 }
 
 install_VPS_SN(){
@@ -147,45 +231,47 @@ install_VPS_SN(){
   msg -bar2
   clear
   
-  msg_info "Creando directorios..."
+  msg -azu "Creando directorios..."
   mkdir -p ${VPS_SN}/tmp >/dev/null 2>&1
-  msg_ok "Directorios creados"
+  msg -verd "OK"
   
-  msg_info "Descargando VPS-SN.tar.xz..."
+  msg -azu "Descargando VPS-SN.tar.xz..."
   cd /etc
   
   if wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz 2>/dev/null; then
-    msg_ok "Descarga exitosa"
+    msg -verd "OK"
     
-    msg_info "Extrayendo archivos..."
+    msg -azu "Extrayendo archivos..."
     if tar -xf VPS-SN.tar.xz >/dev/null 2>&1; then
-      msg_ok "Archivos extraidos"
+      msg -verd "OK"
       rm -rf VPS-SN.tar.xz
     else
-      msg_error "Error extrayendo, creando estructura vacía"
+      msg -verm2 "Error extrayendo"
       mkdir -p ${VPS_SN}/install
     fi
   else
-    msg_error "Fallo descarga, creando estructura vacía"
+    msg -verm2 "Error descargando"
     mkdir -p ${VPS_SN}/install
   fi
   
   cd ~
   chmod -R 755 ${VPS_SN}
   
-  msg_info "Limpiando comandos antiguos..."
+  msg -azu "Limpiando comandos antiguos..."
   rm -rf /usr/bin/menu /usr/bin/adm /usr/bin/VPS-SN 2>/dev/null
+  msg -verd "OK"
   
-  msg_info "Guardando slogan..."
+  msg -azu "Guardando slogan..."
   echo "$slogan" > ${VPS_SN}/tmp/message.txt
+  msg -verd "OK"
   
-  msg_info "Creando comandos de usuario..."
+  msg -azu "Creando comandos de usuario..."
   echo "${VPS_SN}/menu" > /usr/bin/menu && chmod +x /usr/bin/menu
   echo "${VPS_SN}/menu" > /usr/bin/adm && chmod +x /usr/bin/adm
   echo "${VPS_SN}/menu" > /usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
-  msg_ok "Comandos creados"
+  msg -verd "OK"
   
-  msg_info "Configurando .bashrc..."
+  msg -azu "Configurando .bashrc..."
   {
     echo ""
     echo '# VPS-SN Configuration'
@@ -197,12 +283,11 @@ install_VPS_SN(){
     echo '[[ -z "$mess1" ]] && mess1="@Sin_Nombre22"'
     echo 'clear && echo -e "\n$(figlet -f big.flf "  VPS-SN" 2>/dev/null || echo "VPS-SN")\n        RESELLER : $mess1 \n\n   Para iniciar VPS-SN escriba:  menu \n\n"'
   } >> /etc/bash.bashrc
+  msg -verd "OK"
   
-  msg_ok "Configuración de bash completada"
-  
-  msg_info "Estableciendo locale..."
+  msg -azu "Estableciendo locale..."
   update-locale LANG=en_US.UTF-8 LANGUAGE=en 2>/dev/null
-  msg_ok "Locale configurado"
+  msg -verd "OK"
   
   clear
   msg -bar2
@@ -220,7 +305,7 @@ post_reboot(){
 
 install_start(){
   title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "A continuacion se actualizaran los paquetes del sistema.\nEsto podria tomar tiempo, y requerir algunas preguntas."
+  print_center -ama "A continuacion se actualizaran los paquetes del sistema.\nEsto podria tomar tiempo."
   msg -bar3
   
   echo -ne "\033[1;37m Desea continuar? [S/N]: "
@@ -234,15 +319,15 @@ install_start(){
   title "INSTALADOR VPS-SN By @Sin_Nombre22"
   os_system
   
-  msg_info "Sistema detectado: $distro $vercion"
+  msg -azu "Sistema detectado: $distro $vercion"
   
-  msg_info "Actualizando repositorios con apt-get update..."
+  msg -azu "Ejecutando: apt-get update -y"
   apt-get update -y >/dev/null 2>&1
-  msg_ok "Repositorios actualizados"
+  msg -verd "OK"
   
-  msg_info "Actualizando paquetes del sistema con apt-get upgrade..."
+  msg -azu "Ejecutando: apt-get upgrade -y"
   DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1
-  msg_ok "Paquetes actualizados"
+  msg -verd "OK"
   
   msg -bar
   post_reboot
@@ -251,42 +336,42 @@ install_start(){
 # FLUJO PRINCIPAL
 case "${1:-}" in
   -s|--start)
-    msg_info "Iniciando instalación..."
+    msg -azu "Iniciando instalación..."
     install_start
     time_reboot "15"
     ;;
     
   -c|--continue)
-    msg_info "Continuando instalación..."
+    msg -azu "Continuando instalación..."
     rm -f /root/install.sh 2>/dev/null
     sed -i '/VPS-SN/d' /root/.bashrc 2>/dev/null
     os_system
     dependencias
     install_VPS_SN
     msg -bar
-    msg_ok "VPS-SN instalado exitosamente"
+    msg -verd "VPS-SN instalado exitosamente"
     time_reboot "10"
     ;;
     
   -u|--update)
-    msg_info "Actualizando VPS-SN..."
+    msg -azu "Actualizando VPS-SN..."
     install_start
     dependencias
     install_VPS_SN
     msg -bar
-    msg_ok "VPS-SN actualizado exitosamente"
+    msg -verd "VPS-SN actualizado exitosamente"
     time_reboot "10"
     ;;
     
   *)
-    msg_info "Ejecutando instalación directa..."
+    msg -azu "Ejecutando instalación directa..."
     install_start
     post_reboot
     time_reboot "15"
     ;;
 esac
 
-# Limpiar script
+# Limpiar
 rm -f $(pwd)/$0 2>/dev/null
 mv -f ${module} /etc/VPS-SN/module 2>/dev/null
 
