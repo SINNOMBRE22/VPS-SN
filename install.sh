@@ -1,7 +1,8 @@
 #!/bin/bash
 # VPS-SN - Instalador Unificado
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 02:41:15 UTC
+# Fecha: 2025-10-24 03:40:04 UTC
+
 # Configuración de módulos
 module="$(pwd)/module"
 rm -rf ${module}
@@ -31,7 +32,6 @@ VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
 VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
 SCPinstal="$HOME/install"
 
-# Zona horaria por defecto
 # Zona horaria por defecto a Ciudad de México
 rm -rf /etc/localtime &>/dev/null
 ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
@@ -39,7 +39,7 @@ rm $(pwd)/$0 &> /dev/null
 
 # Función para detener instalación
 stop_install(){
-  title "INSTALACION CANCELADA"
+  print_center -verm2 "INSTALACION CANCELADA"
   exit
 }
 
@@ -92,23 +92,23 @@ dependencias(){
     for (( a = 0; a < $puntos; a++ )); do
       pts+="."
     done
-    msg -nazu "       instalando $i$(msg -ama "$pts")"
+    msg -nazu "       instalando $i$(msg -ama "$pts")" 2>/dev/null || echo "Instalando $i..."
     if apt install $i -y &>/dev/null ; then
-      msg -verd "INSTALL"
+      msg -verd "INSTALL" 2>/dev/null || echo "[OK]"
     else
-      msg -verm2 "FAIL"
+      msg -verm2 "FAIL" 2>/dev/null || echo "[FAIL]"
       sleep 2
       tput cuu1 && tput dl1
-      print_center -ama "aplicando fix a $i"
+      print_center -ama "aplicando fix a $i" 2>/dev/null || echo "Aplicando fix..."
       dpkg --configure -a &>/dev/null
       sleep 2
       tput cuu1 && tput dl1
 
-      msg -nazu "       instalando $i$(msg -ama "$pts")"
+      msg -nazu "       instalando $i$(msg -ama "$pts")" 2>/dev/null || echo "Reintentando $i..."
       if apt install $i -y &>/dev/null ; then
-        msg -verd "INSTALL"
+        msg -verd "INSTALL" 2>/dev/null || echo "[OK]"
       else
-        msg -verm2 "FAIL"
+        msg -verm2 "FAIL" 2>/dev/null || echo "[FAIL]"
       fi
     fi
   done
@@ -117,33 +117,31 @@ dependencias(){
 # Instalar VPS-SN sin validación de KEY
 install_VPS_SN() {
   clear && clear
-  msgi -bar2
+  msgi -bar2 2>/dev/null || echo "=================================="
   echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
-  tput cuu1 && tput dl1
+  tput cuu1 && tput dl1 2>/dev/null
   echo -e "$slogan"
-  msgi -bar2
+  msgi -bar2 2>/dev/null || echo "=================================="
   clear && clear
   
-  mkdir /etc/VPS-SN >/dev/null 2>&1
-  mkdir /etc/VPS-SN/tmp >/dev/null 2>&1
+  mkdir -p /etc/VPS-SN/tmp >/dev/null 2>&1
   
   cd /etc
+  echo -e "\033[1;36m Descargando VPS-SN.tar.xz...\033[0m"
   wget https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz >/dev/null 2>&1
   
-  if [[ ! -e VPS-SN.tar.xz ]]; then
-    echo -e "\033[1;31mError descargando VPS-SN.tar.xz, usando fallback\033[0m"
-    mkdir -p /etc/VPS-SN/install
-  else
+  if [[ -e VPS-SN.tar.xz ]]; then
+    echo -e "\033[1;32m ✓ Descarga exitosa\033[0m"
     tar -xf VPS-SN.tar.xz >/dev/null 2>&1
-    chmod +x VPS-SN.tar.xz >/dev/null 2>&1
     rm -rf VPS-SN.tar.xz
+    echo -e "\033[1;32m ✓ Archivos extraidos\033[0m"
+  else
+    echo -e "\033[1;31m ✗ Error descargando VPS-SN.tar.xz, usando fallback\033[0m"
+    mkdir -p /etc/VPS-SN/install
   fi
   
   cd
   chmod -R 755 /etc/VPS-SN
-  VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
-  VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
-  SCPinstal="$HOME/install"
   
   rm -rf /usr/bin/menu
   rm -rf /usr/bin/adm
@@ -165,29 +163,31 @@ install_VPS_SN() {
   
   update-locale LANG=en_US.UTF-8 LANGUAGE=en
   clear && clear
-  msgi -bar2
-  echo -e "\e[1;92m             >> INSTALACION COMPLETADA <<" && msgi -bar2
+  msgi -bar2 2>/dev/null || echo "=================================="
+  echo -e "\e[1;92m             >> INSTALACION COMPLETADA <<" 
+  msgi -bar2 2>/dev/null || echo "=================================="
   echo -e "      COMANDO PRINCIPAL PARA ENTRAR AL PANEL "
-  echo -e "                      \033[1;41m  menu  \033[0;37m" && msgi -bar2
+  echo -e "                      \033[1;41m  menu  \033[0;37m"
+  msgi -bar2 2>/dev/null || echo "=================================="
 }
 
 # Configurar reinicio con continuación
 post_reboot(){
   echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
-  title "INSTALADOR VPS-SN"
-  print_center -ama "La instalacion continuara\ndespues del reinicio!!!"
-  msg -bar
+  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
+  print_center -ama "La instalacion continuara\ndespues del reinicio!!!" 2>/dev/null || echo "Continuando tras reboot..."
+  msg -bar 2>/dev/null || echo "=================================="
 }
 
 # Iniciar instalación
 install_start(){
-  title "INSTALADOR VPS-SN"
-  print_center -ama "A continuacion se actualizaran los paquetes\ndel systema. Esto podria tomar tiempo,\ny requerir algunas preguntas\npropias de las actualizaciones."
-  msg -bar3
-  msg -ne " Desea continuar? [S/N]: "
+  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
+  print_center -ama "A continuacion se actualizaran los paquetes\ndel systema. Esto podria tomar tiempo,\ny requerir algunas preguntas\npropias de las actualizaciones." 2>/dev/null || echo "Actualizando sistema..."
+  msg -bar3 2>/dev/null || echo "=================================="
+  msg -ne " Desea continuar? [S/N]: " 2>/dev/null || echo -n "¿Continuar? [S/N]: "
   read opcion
   [[ "$opcion" != @(s|S) ]] && stop_install
-  title "INSTALADOR VPS-SN"
+  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
   os_system
   repo "${vercion}"
   apt update -y; apt upgrade -y  
@@ -196,17 +196,17 @@ install_start(){
 # Continuar instalación
 install_continue(){
   os_system
-  title "INSTALADOR VPS-SN"
-  print_center -ama "$distro $vercion"
-  print_center -verd "INSTALANDO DEPENDENCIAS"
-  msg -bar3
+  print_center -aza "INSTALADOR VPS-SN" 2>/dev/null || echo "INSTALADOR VPS-SN"
+  print_center -ama "$distro $vercion" 2>/dev/null || echo "$distro $vercion"
+  print_center -verd "INSTALANDO DEPENDENCIAS" 2>/dev/null || echo "INSTALANDO DEPENDENCIAS"
+  msg -bar3 2>/dev/null || echo "=================================="
   dependencias
-  msg -bar3
-  print_center -azu "Removiendo paquetes obsoletos"
+  msg -bar3 2>/dev/null || echo "=================================="
+  print_center -azu "Removiendo paquetes obsoletos" 2>/dev/null || echo "Removiendo paquetes obsoletos"
   apt autoremove -y &>/dev/null
   sleep 2
-  tput cuu1 && tput dl1
-  print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
+  tput cuu1 && tput dl1 2>/dev/null
+  print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete" 2>/dev/null || echo "Complete manualmente si es necesario"
   enter
 }
 
@@ -229,7 +229,10 @@ do
 done
 
 # Fin del instalador
-title "VPS-SN INSTALADO"
-print_center -verd "Instalacion completada exitosamente"
-msg -bar
+clear
+echo -e "\033[1;32m════════════════════════════════════\033[0m"
+echo -e "\033[1;36m    VPS-SN INSTALADO EXITOSAMENTE\033[0m"
+echo -e "\033[1;32m════════════════════════════════════\033[0m"
+echo -e "\033[1;33m\n Comando para iniciar: menu\033[0m\n"
+msg -bar 2>/dev/null || echo "════════════════════════════════════"
 time_reboot "10"
