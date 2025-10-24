@@ -54,7 +54,7 @@ install(){
         fi
         cd ${VPS_src}
         echo -ne "$(msg -azu " DESCARGANDO BADVPN......") "
-        if wget https://github.com/rudi9999/ADMRufu/raw/main/Utils/badvpn/badvpn-master.zip &>/dev/null; then
+        if wget https://github.com/SINNOMBRE22/VPS-SN/raw/main/utilidades/badvpn/badvpn-master.zip &>/dev/null; then
             msg -verd "[OK]"
         else
             msg -verm2 "[fail]"

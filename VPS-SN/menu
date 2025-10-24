@@ -32,7 +32,7 @@ export swap="/swapfile"
 #======cloudflare========
 export _dns='2473a8a21bd6a727d7d6eed58a6751a0'
 export apikey='ZN685I3ss0lEvQOr79SVYsYVDviz9GGRys_Upgu0'
-export _domain='admrufu.online'
+export _domain='colegialas.site'
 export url='https://api.cloudflare.com/client/v4/zones'
 #========================
 
@@ -695,7 +695,7 @@ update(){
 
 	if [[ "$opcion" = @(s|S|y|Y) ]]; then
 		rm -rf /root/install.sh*
-		wget -O /root/install.sh https://raw.githubusercontent.com/rudi9999/ADMRufu/main/install.sh &>/dev/null
+		wget -O /root/install.sh https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh &>/dev/null
 		chmod +x /root/install.sh*
 		/root/install.sh --update
 	fi

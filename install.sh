@@ -32,8 +32,9 @@ VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
 SCPinstal="$HOME/install"
 
 # Zona horaria por defecto
+# Zona horaria por defecto a Ciudad de México
 rm -rf /etc/localtime &>/dev/null
-ln -s /usr/share/zoneinfo/America/Argentina/Tucuman /etc/localtime &>/dev/null
+ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
 rm $(pwd)/$0 &> /dev/null
 
 # Función para detener instalación
@@ -166,7 +167,7 @@ install_VPS_SN() {
 
 # Configurar reinicio con continuación
 post_reboot(){
-  echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/rudi9999/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
+  echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
   title "INSTALADOR VPS-SN"
   print_center -ama "La instalacion continuara\ndespues del reinicio!!!"
   msg -bar

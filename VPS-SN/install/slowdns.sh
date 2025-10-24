@@ -92,7 +92,7 @@ ini_slow(){
 
     if [[ ! -e ${VPS_inst}/dns-server ]]; then
     	msg -nama " Descargando binario...."
-    	if wget -O ${VPS_inst}/dns-server https://github.com/rudi9999/ADMRufu/raw/main/Utils/SlowDNS/dns-server &>/dev/null ; then
+    	if wget -O ${VPS_inst}/dns-server https://github.com/SINNOMBRE22/VPS-SN/raw/main/utilidades/SlowDNS/dns-server &>/dev/null ; then
     		chmod +x ${VPS_inst}/dns-server
     		msg -verd "[OK]"
     	else

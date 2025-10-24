@@ -311,7 +311,7 @@ installFinish() {
     tmp='/etc/v2ray/temp.json'
     jq 'del(.inbounds[].streamSettings.kcpSettings[])' < /etc/v2ray/config.json >> /etc/v2ray/tmp.json
     rm -rf /etc/v2ray/config.json
-    jq '.inbounds[].streamSettings += {"network":"ws","wsSettings":{"path": "/ADMRufu/","headers": {"Host": "ejemplo.com"}}}' < /etc/v2ray/tmp.json >> /etc/v2ray/config.json
+    jq '.inbounds[].streamSettings += {"network":"ws","wsSettings":{"path": "/SinNombre/","headers": {"Host": "ejemplo.com"}}}' < /etc/v2ray/tmp.json >> /etc/v2ray/config.json
     chmod 777 /etc/v2ray/config.json
 
     if [[ ${INSTALL_WAY} == 0 ]]; then

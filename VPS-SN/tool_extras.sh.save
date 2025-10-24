@@ -13,7 +13,7 @@ install_h(){
     line2=$(echo "$line"|cut -d "=" -f1)
     line3="$(echo "$line"|cut -d "=" -f2|tr -d '[[:space:]]')"
 
-    if echo -ne $(msg -azu "  Descargando $line3....") && wget -O ${VPS_src}/tool/$line3 https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/online/$line3 &>/dev/null; then
+    if echo -ne $(msg -azu "  Descargando $line3....") && wget -O ${VPS_src}/tool/$line3 https://raw.githubusercontent.com/SINNOMBRE22/main/online/$line3 &>/dev/null; then
       chmod +x ${VPS_src}/tool/$line3
       echo "$line" >> ${VPS_src}/tool/tool
       msg -verd "[ok]"
