@@ -160,8 +160,6 @@ install_VPS_SN() {
   clear && clear
   msg -bar2
   echo -e "\e[1;92m             >> INSTALACION COMPLETADA <<" && msg -bar2
-  echo -e "      COMANDO PRINCIPAL PARA ENTRAR AL PANEL "
-  echo -e "                      \033[1;41m  menu  \033[0;37m" && msg -bar2
 }
 
 while :
@@ -177,12 +175,9 @@ do
                 install_continue
                 install_VPS_SN
                 break;;
-    *)exit;;
+    *)install_VPS_SN; break;;
   esac
 done
-
-title "INSTALADOR VPS-SN By @Sin_Nombre22"
-install_VPS_SN
 
 mv -f ${module} /etc/VPS-SN/module
 time_reboot "10"
