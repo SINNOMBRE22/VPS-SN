@@ -1,7 +1,7 @@
 #!/bin/bash
 # VPS-SN - Instalador Unificado
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 03:04:52 UTC
+# Fecha: 2025-10-24 03:07:53 UTC
 # Configuración de módulos
 module="$(pwd)/module"
 rm -rf ${module}
@@ -49,7 +49,11 @@ enter(){
 
 # Función de reinicio
 time_reboot(){
-  print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
+  clear && clear
+  msgi -bar
+  echo -e "\e[1;93m     CONTINUARA INSTALACION DESPUES DEL REBOOT"
+  echo -e "\e[1;93m         O EJECUTE EL COMANDO: \e[1;92mVPS-SN -c "
+  msgi -bar
   REBOOT_TIMEOUT="$1"
   
   while [ $REBOOT_TIMEOUT -gt 0 ]; do
@@ -208,37 +212,50 @@ install_continue(){
   print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
   msgi -bar2
   enter
-  install_VPS_SN
-  msgi -bar2
-  title "VPS-SN INSTALADO"
-  print_center -verd "Instalacion completada exitosamente"
-  msg -bar
 }
 
 # Menú de opciones
-case $1 in
-  -s|--start)
-    install_start
-    post_reboot
-    time_reboot "15"
-    ;;
-  -c|--continue)
-    rm /root/install.sh &> /dev/null
-    sed -i '/VPS-SN/d' /root/.bashrc
-    install_continue
-    time_reboot "10"
-    ;;
-  -u|--update)
-    install_start
-    install_continue
-    time_reboot "10"
-    ;;
-  *)
-    install_VPS_SN
-    msgi -bar2
-    title "VPS-SN INSTALADO"
-    print_center -verd "Instalacion completada exitosamente"
-    msg -bar
-    time_reboot "10"
-    ;;
-esac
+while :
+do
+  case $1 in
+    -s|--start)
+      install_start && post_reboot && time_reboot "15"
+      break
+      ;;
+    -c|--continue)
+      rm /root/install.sh &> /dev/null
+      sed -i '/VPS-SN/d' /root/.bashrc
+      install_continue
+      install_VPS_SN
+      clear && clear
+      msgi -bar2
+      title "VPS-SN INSTALADO"
+      print_center -verd "Instalacion completada exitosamente"
+      msg -bar
+      time_reboot "10"
+      break
+      ;;
+    -u|--update)
+      install_start
+      install_continue
+      install_VPS_SN
+      clear && clear
+      msgi -bar2
+      title "VPS-SN INSTALADO"
+      print_center -verd "Instalacion completada exitosamente"
+      msg -bar
+      time_reboot "10"
+      break
+      ;;
+    *)
+      install_VPS_SN
+      clear && clear
+      msgi -bar2
+      title "VPS-SN INSTALADO"
+      print_center -verd "Instalacion completada exitosamente"
+      msg -bar
+      time_reboot "10"
+      break
+      ;;
+  esac
+done
