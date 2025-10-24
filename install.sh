@@ -1,7 +1,7 @@
 #!/bin/bash
 # VPS-SN - Instalador Unificado
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 01:24:22 UTC
+# Fecha: 2025-10-24 02:41:15 UTC
 # Configuración de módulos
 module="$(pwd)/module"
 rm -rf ${module}
@@ -43,6 +43,12 @@ stop_install(){
   exit
 }
 
+# Función para pausar y esperar Enter
+enter(){
+  echo -e "\033[1;97m Presione ENTER para continuar... \033[0m"
+  read
+}
+
 # Función de reinicio
 time_reboot(){
   print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
@@ -77,7 +83,7 @@ repo(){
 
 # Instalar dependencias
 dependencias(){
-  soft="sudo bsdmainutils zip unzip ufw curl python python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat"
+  soft="sudo bsdmainutils zip unzip ufw curl python python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq npm nodejs socat netcat netcat-traditional net-tools figlet lolcat git htop vim tmux psmisc"
 
   for i in $soft; do
     leng="${#i}"
@@ -226,4 +232,4 @@ done
 title "VPS-SN INSTALADO"
 print_center -verd "Instalacion completada exitosamente"
 msg -bar
-time_reboot "10" 
+time_reboot "10"
