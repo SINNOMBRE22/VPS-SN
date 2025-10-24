@@ -1,183 +1,291 @@
 #!/bin/bash
 
-module="$(pwd)/module"
-rm -rf ${module}
-wget -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" &>/dev/null
-[[ ! -e ${module} ]] && exit
-chmod +x ${module} &>/dev/null
-source ${module}
+# V2RAY Manager - Corregido y Verificado
+# By @Sin_Nombre22
 
-CTRL_C(){
-  rm -rf ${module}; exit
+restart(){
+	title "REINICIANDO V2RAY"
+	if command -v v2ray &> /dev/null; then
+		if v2ray restart 2>/dev/null | grep -q "success"; then
+			print_center -verd "v2ray restart success !"
+		else
+			print_center -verm2 "v2ray restart fail !"
+		fi
+	else
+		print_center -verm2 "v2ray no instalado"
+	fi
+	msg -bar
+	sleep 3
 }
 
-trap "CTRL_C" INT TERM EXIT
-
-VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
-VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
-SCPinstal="$HOME/install"
-
-rm -rf /etc/localtime &>/dev/null
-ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
-rm $(pwd)/$0 &> /dev/null
-
-stop_install(){
- 	title "INSTALACION CANCELADA"
- 	exit
+ins_v2r(){
+	title "INSTALANDO V2RAY"
+	print_center -ama "La instalacion puede tener fallas!\nObserve atentamente el log de instalacion.\nPodría contener información sobre errores!"
+	enter
+	
+	if source <(curl -sSL https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/utilidades/v2ray/v2ray.sh) 2>/dev/null; then
+		msg -verd "V2RAY Instalado correctamente"
+	else
+		msg -verm2 "Error instalando V2RAY"
+	fi
+	enter
 }
 
-time_reboot(){
-  print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
-  REBOOT_TIMEOUT="$1"
-  
-  while [ $REBOOT_TIMEOUT -gt 0 ]; do
-     print_center -ne "-$REBOOT_TIMEOUT-\r"
-     sleep 1
-     : $((REBOOT_TIMEOUT--))
-  done
-  reboot
+v2ray_tls(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		print_center -ama "Instale v2ray primero"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CERTIFICADO TLS V2RAY"
+	if v2ray tls 2>/dev/null; then
+		msg -verd "Certificado configurado"
+	else
+		msg -verm2 "Error configurando certificado"
+	fi
+	enter
 }
 
-os_system(){
-  system=$(cat -n /etc/issue |grep 1 |cut -d ' ' -f6,7,8 |sed 's/1//' |sed 's/      //')
-  distro=$(echo "$system"|awk '{print $1}')
-
-  case $distro in
-    Debian)vercion=$(echo $system|awk '{print $3}'|cut -d '.' -f1);;
-    Ubuntu)vercion=$(echo $system|awk '{print $2}'|cut -d '.' -f1,2);;
-  esac
+removeV2Ray(){
+	title "DESINSTALANDO V2RAY"
+	print_center -ama "Esto puede tomar un tiempo..."
+	
+	bash <(curl -L -s https://multi.netlify.app/go.sh) --remove >/dev/null 2>&1
+	rm -rf /etc/v2ray >/dev/null 2>&1
+	rm -rf /var/log/v2ray >/dev/null 2>&1
+	
+	bash <(curl -L -s https://multi.netlify.app/go.sh) --remove -x >/dev/null 2>&1
+	rm -rf /etc/xray >/dev/null 2>&1
+	rm -rf /var/log/xray >/dev/null 2>&1
+	
+	pip uninstall v2ray_util -y >/dev/null 2>&1
+	
+	clear
+	msg -bar
+	print_center -verd "V2RAY REMOVIDO!"
+	enter
+	return 1
 }
 
-repo(){
-  link="https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Repositorios/$1.list"
-  case $1 in
-    8|9|10|11|16.04|18.04|20.04|20.10|21.04|21.10|22.04)wget -O /etc/apt/sources.list ${link} &>/dev/null;;
-  esac
+v2ray_stream(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "PROTOCOLOS V2RAY"
+	v2ray stream
+	msg -bar
+	read foo
 }
 
-dependencias(){
- 	soft="sudo bsdmainutils zip unzip ufw curl python python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat"
+port(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
 
- 	for i in $soft; do
- 		leng="${#i}"
- 		puntos=$(( 21 - $leng))
- 		pts="."
- 		for (( a = 0; a < $puntos; a++ )); do
- 			pts+="."
- 		done
- 		msg -nazu "       instalando $i$(msg -ama "$pts")"
- 		if apt install $i -y &>/dev/null ; then
- 			msg -verd "INSTALL"
- 		else
- 			msg -verm2 "FAIL"
- 			sleep 2
- 			tput cuu1 && tput dl1
- 			print_center -ama "aplicando fix a $i"
- 			dpkg --configure -a &>/dev/null
- 			sleep 2
- 			tput cuu1 && tput dl1
-
- 			msg -nazu "       instalando $i$(msg -ama "$pts")"
- 			if apt install $i -y &>/dev/null ; then
- 				msg -verd "INSTALL"
- 			else
- 				msg -verm2 "FAIL"
- 			fi
- 		fi
- 	done
+	title "CONFIGURAR PUERTO V2RAY"
+	print_center -azu "Puerto actual: $(jq -r '.inbounds[].port' /etc/v2ray/config.json 2>/dev/null || echo 'desconocido')"
+	msg -bar
+	msg -ne " Nuevo puerto: "
+	read puerto
+	
+	if [[ $puerto =~ ^[0-9]+$ ]] && [ $puerto -gt 0 ] && [ $puerto -lt 65535 ]; then
+		jq --argjson p $puerto '.inbounds[].port = $p' /etc/v2ray/config.json > /tmp/config.json && mv /tmp/config.json /etc/v2ray/config.json
+		restart
+		msg -verd "Puerto actualizado a $puerto"
+	else
+		msg -verm2 "Puerto inválido"
+	fi
+	enter
 }
 
-post_reboot(){
-  echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "La instalacion continuara\ndespues del reinicio!!!"
-  msg -bar
+alterid(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CONFIGURAR ALTERID V2RAY"
+	print_center -azu "AlterId actual: $(jq -r '.inbounds[].settings.clients[0].alterId' /etc/v2ray/config.json 2>/dev/null || echo 'desconocido')"
+	msg -bar
+	msg -ne " Nuevo alterId: "
+	read alterid
+	
+	if [[ $alterid =~ ^[0-9]+$ ]]; then
+		jq --argjson a $alterid '.inbounds[].settings.clients[].alterId = $a' /etc/v2ray/config.json > /tmp/config.json && mv /tmp/config.json /etc/v2ray/config.json
+		restart
+		msg -verd "AlterId actualizado a $alterid"
+	else
+		msg -verm2 "AlterId inválido"
+	fi
+	enter
 }
 
-install_start(){
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "A continuacion se actualizaran los paquetes\ndel systema. Esto podria tomar tiempo,\ny requerir algunas preguntas\npropias de las actualizaciones."
-  msg -bar3
-  msg -ne " Desea continuar? [S/N]: "
-  read opcion
-  [[ "$opcion" != @(s|S) ]] && stop_install
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  os_system
-  repo "${vercion}"
-  apt update -y; apt upgrade -y  
+n_v2ray(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CONFIGURACION NATIVA V2RAY"
+	v2ray
+	enter
 }
 
-install_continue(){
-  os_system
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "$distro $vercion"
-  print_center -verd "INSTALANDO DEPENDENCIAS"
-  msg -bar3
-  dependencias
-  msg -bar3
-  print_center -azu "Removiendo paquetes obsoletos"
-  apt autoremove -y &>/dev/null
-  sleep 2
-  tput cuu1 && tput dl1
-  print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
-  enter
+address(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CONFIGURAR ADDRESS V2RAY"
+	current=$(jq -r '.inbounds[].domain' /etc/v2ray/config.json 2>/dev/null || echo $(wget -qO- ipv4.icanhazip.com))
+	print_center -azu "Address actual: $current"
+	msg -bar
+	msg -ne " Nuevo address: "
+	read addr
+	
+	if [[ ! -z "$addr" ]]; then
+		jq --arg a "$addr" '.inbounds[].domain = $a' /etc/v2ray/config.json > /tmp/config.json && mv /tmp/config.json /etc/v2ray/config.json
+		restart
+		msg -verd "Address actualizado a $addr"
+	else
+		msg -verm2 "Address vacío"
+	fi
+	enter
 }
 
-install_VPS_SN() {
-  clear && clear
-  msg -bar2
-  echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
-  tput cuu1 && tput dl1
-  echo -e "$slogan"
-  msg -bar2
-  clear && clear
-  mkdir /etc/VPS-SN >/dev/null 2>&1
-  cd /etc
-  wget https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz >/dev/null 2>&1
-  tar -xf VPS-SN.tar.xz >/dev/null 2>&1
-  rm -rf VPS-SN.tar.xz
-  cd
-  chmod -R 755 /etc/VPS-SN
-  VPS_SN="/etc/VPS-SN" && [[ ! -d ${VPS_SN} ]] && mkdir ${VPS_SN}
-  VPS_inst="${VPS_SN}/install" && [[ ! -d ${VPS_inst} ]] && mkdir ${VPS_inst}
-  SCPinstal="$HOME/install"
-  rm -rf /usr/bin/menu
-  rm -rf /usr/bin/adm
-  rm -rf /usr/bin/VPS-SN
-  echo "$slogan" >/etc/VPS-SN/tmp/message.txt
-  echo "${VPS_SN}/menu" >/usr/bin/menu && chmod +x /usr/bin/menu
-  echo "${VPS_SN}/menu" >/usr/bin/adm && chmod +x /usr/bin/adm
-  echo "${VPS_SN}/menu" >/usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
-  [[ -z $(echo $PATH | grep "/usr/games") ]] && echo 'if [[ $(echo $PATH|grep "/usr/games") = "" ]]; then PATH=$PATH:/usr/games; fi' >>/etc/bash.bashrc
-  echo '[[ $UID = 0 ]] && screen -dmS up /etc/VPS-SN/chekup.sh' >>/etc/bash.bashrc
-  echo 'v=$(cat /etc/VPS-SN/vercion)' >>/etc/bash.bashrc
-  echo '[[ -e /etc/VPS-SN/new_vercion ]] && up=$(cat /etc/VPS-SN/new_vercion) || up=$v' >>/etc/bash.bashrc
-  echo -e "[[ \$(date '+%s' -d \$up) -gt \$(date '+%s' -d \$(cat /etc/VPS-SN/vercion)) ]] && v2=\"Nueva Vercion disponible: \$v >>> \$up\" || v2=\"Script Vercion: \$v\"" >>/etc/bash.bashrc
-  echo '[[ -e "/etc/VPS-SN/tmp/message.txt" ]] && mess1="$(less /etc/VPS-SN/tmp/message.txt)"' >>/etc/bash.bashrc
-  echo '[[ -z "$mess1" ]] && mess1="@Sin_Nombre22"' >>/etc/bash.bashrc
-  echo 'clear && echo -e "\n$(figlet -f big.flf "  VPS-SN")\n        RESELLER : $mess1 \n\n   Para iniciar VPS-SN escriba:  menu \n\n   $v2\n\n"|lolcat' >>/etc/bash.bashrc
-  update-locale LANG=en_US.UTF-8 LANGUAGE=en
-  clear && clear
-  msg -bar2
-  echo -e "\e[1;92m             >> INSTALACION COMPLETADA <<" && msg -bar2
+host(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CONFIGURAR HOST V2RAY"
+	current=$(jq -r '.inbounds[].streamSettings.wsSettings.headers.Host' /etc/v2ray/config.json 2>/dev/null || echo "desconocido")
+	print_center -azu "Host actual: $current"
+	msg -bar
+	msg -ne " Nuevo host: "
+	read host
+	
+	if [[ ! -z "$host" ]]; then
+		jq --arg h "$host" '.inbounds[].streamSettings.wsSettings.headers.Host = $h' /etc/v2ray/config.json > /tmp/config.json && mv /tmp/config.json /etc/v2ray/config.json
+		restart
+		msg -verd "Host actualizado a $host"
+	else
+		msg -verm2 "Host vacío"
+	fi
+	enter
+}
+
+path(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "CONFIGURAR PATH V2RAY"
+	current=$(jq -r '.inbounds[].streamSettings.wsSettings.path' /etc/v2ray/config.json 2>/dev/null || echo "/")
+	print_center -azu "Path actual: $current"
+	msg -bar
+	msg -ne " Nuevo path: "
+	read path
+	
+	if [[ ! -z "$path" ]]; then
+		jq --arg p "$path" '.inbounds[].streamSettings.wsSettings.path = $p' /etc/v2ray/config.json > /tmp/config.json && mv /tmp/config.json /etc/v2ray/config.json
+		restart
+		msg -verd "Path actualizado a $path"
+	else
+		msg -verm2 "Path vacío"
+	fi
+	enter
+}
+
+reset(){
+	if ! command -v v2ray &> /dev/null; then
+		title "ERROR"
+		print_center -verm2 "v2ray no está instalado"
+		msg -bar
+		enter
+		return
+	fi
+
+	title "RESTAURAR AJUSTES V2RAY"
+	print_center -ama "¿Está seguro de restaurar ajustes por defecto? [S/N]"
+	read confirm
+	
+	if [[ "$confirm" = @(s|S) ]]; then
+		v2ray new
+		msg -verd "Ajustes restaurados"
+		restart
+	else
+		msg -ama "Operación cancelada"
+	fi
+	enter
 }
 
 while :
 do
-  case $1 in
-    -s|--start)install_start && post_reboot && time_reboot "15";;
-    -c|--continue)rm /root/install.sh &> /dev/null
-                  sed -i '/VPS-SN/d' /root/.bashrc
-                  install_continue
-                  install_VPS_SN
-                  break;;
-    -u|--update)install_start
-                install_continue
-                install_VPS_SN
-                break;;
-    *)install_VPS_SN; break;;
-  esac
+	clear
+	msg -bar
+	print_center -verd "v2ray manager by @Sin_Nombre22"
+	msg -bar
+	msg -ama "INSTALACION"
+	msg -bar3
+	menu_func "$(msg -verd "INSTALL/RE-INSTALL V2RAY")" \
+	"$(msg -verm2 "DESINSTALAR V2RAY")\n$(msg -bar3)\n$(msg -ama "CONFIGURACION")\n$(msg -bar3)" \
+	"Certificado SSL/TLS" \
+	"Protocolos" \
+	"Puerto" \
+	"AlterId" \
+	"Configuración nativa\n$(msg -bar3)\n$(msg -ama "CLIENTES")\n$(msg -bar3)" \
+	"Address" \
+	"Host" \
+	"Path\n$(msg -bar3)\n$(msg -ama "EXTRAS")\n$(msg -bar3)" \
+	"Restablecer ajustes"
+	back
+	opcion=$(selection_fun 12)
+	case $opcion in
+		1)ins_v2r;;
+		2)removeV2Ray;;
+		3)v2ray_tls;;
+		4)v2ray_stream;;
+		5)port;;
+		6)alterid;;
+		7)n_v2ray;;
+		8)address;;
+		9)host;;
+		10)path;;
+		11)reset;;
+		0)break;;
+	esac
+	[[ "$?" = "1" ]] && break
 done
-
-mv -f ${module} /etc/VPS-SN/module
-time_reboot "10"
+return 1
