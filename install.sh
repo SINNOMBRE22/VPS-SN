@@ -1,98 +1,58 @@
 #!/bin/bash
 
+# VPS-SN - Instalador Mejorado v2
+# Proyecto: VPS-SN By @Sin_Nombre22
+# Fecha: 2025-10-24 05:08:00 UTC
+
 clear
 
-# VPS-SN - Instalador Mejorado
-# Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 05:02:36 UTC
-
-set -e
-
-# Detectar si es root
+# Verificar root
 if [[ $EUID -ne 0 ]]; then
    echo "[!] Este script debe ejecutarse como root"
    exit 1
 fi
 
-# Configurar linger para root
-if ! loginctl show-user root | grep -q '^Linger=yes'; then
-    echo "[+] Configurando linger para root..."
-    loginctl enable-linger root
-fi
+set -e
 
-# Crear directorio runtime
-if [ ! -d /run/user/0 ]; then
-    echo "[+] Creando directorio /run/user/0..."
-    mkdir -p /run/user/0
-    chmod 700 /run/user/0
-    chown root:root /run/user/0
-fi
+echo "[+] Inicializando VPS-SN..."
 
-# Configurar XDG_RUNTIME_DIR
-if [ -z "$XDG_RUNTIME_DIR" ]; then
-    export XDG_RUNTIME_DIR=/run/user/0
-fi
+# Zona horaria
+rm -rf /etc/localtime 2>/dev/null
+ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime 2>/dev/null
+echo "[+] Zona horaria: Mexico_City"
 
-echo "[+] Detectando sistema operativo..."
+# Detectar SO
+echo "[+] Detectando sistema..."
 . /etc/os-release
 
-# Actualizar repositorios
+# Actualizar
 echo "[+] Actualizando repositorios..."
 apt-get update -y >/dev/null 2>&1
-apt-get install -y gnupg wget software-properties-common lsb-release >/dev/null 2>&1
+apt-get install -y gnupg wget software-properties-common lsb-release curl >/dev/null 2>&1
 
-# Detectar distro e instalar dependencias
+# Instalar por SO
 if [[ "$ID" == "ubuntu" ]]; then
-    echo "[+] Ubuntu detectado: $VERSION_ID"
-    echo "[+] Configurando PPA ubuntu-toolchain-r/test..."
+    echo "[+] Ubuntu $VERSION_ID detectado"
     add-apt-repository -y ppa:ubuntu-toolchain-r/test < /dev/null >/dev/null 2>&1
     apt-get update -y >/dev/null 2>&1
-
-    echo "[+] Instalando libstdc++6..."
     apt-get install -y libstdc++6 >/dev/null 2>&1
 
 elif [[ "$ID" == "debian" ]]; then
-    echo "[+] Debian detectado: $VERSION_ID"
-
-    if ! dpkg-query -W -f='${Status}' libstdc++6 > /dev/null 2>&1; then
-        echo "[+] Instalando libstdc++6..."
-        apt-get install -y libstdc++6 >/dev/null 2>&1
-    else
-        echo "[+] libstdc++6 ya está instalado"
-    fi
-
-    if [[ $? -ne 0 ]]; then
-        echo "[+] Instalando libstdc++6 manualmente..."
-        ARCH=$(dpkg --print-architecture)
-        VERSION_ID_NUM=$(echo "$VERSION_ID" | cut -d'.' -f1)
-        
-        LIBSTDCPP_DEB_URL="https://ftp.debian.org/debian/pool/main/g/gcc-11/libstdc++6-11-dbg_11.5.0-2_${ARCH}.deb"
-        
-        echo "[+] Descargando desde: $LIBSTDCPP_DEB_URL"
-        wget -q -O /tmp/libstdc++6.deb "$LIBSTDCPP_DEB_URL"
-        
-        echo "[+] Instalando .deb..."
-        dpkg -i /tmp/libstdc++6.deb || apt-get install -f -y >/dev/null 2>&1
-    fi
+    echo "[+] Debian $VERSION_ID detectado"
+    apt-get install -y libstdc++6 >/dev/null 2>&1
 
 else
-    echo "[!] Sistema no soportado automáticamente"
+    echo "[!] Sistema no soportado"
     exit 1
 fi
 
-# Instalar libcurl4-openssl-dev
-echo "[+] Detectando libcurl4-openssl-dev..."
-if ! dpkg -l | grep -q libcurl4-openssl-dev; then
-    echo "[+] Instalando libcurl4-openssl-dev..."
-    apt-get update -y >/dev/null 2>&1
-    apt-get install -y libcurl4-openssl-dev >/dev/null 2>&1
-else
-    echo "[+] libcurl4-openssl-dev ya está instalado"
-fi
+# libcurl
+echo "[+] Instalando libcurl4-openssl-dev..."
+apt-get install -y libcurl4-openssl-dev >/dev/null 2>&1
 
-# Cargar módulo
-echo "[+] Descargando módulo de funciones..."
-module="$(pwd)/module"
+# Descargar módulo
+echo "[+] Descargando módulo..."
+module="/tmp/module"
 rm -rf ${module} 2>/dev/null
 wget -q -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module"
 
@@ -103,29 +63,23 @@ fi
 
 chmod +x ${module}
 source ${module}
+echo "[+] Módulo cargado"
+
+# Variables
+VPS_SN="/etc/VPS-SN"
+VPS_inst="${VPS_SN}/install"
+
+mkdir -p ${VPS_SN} ${VPS_inst} 2>/dev/null
 
 # Cleanup
 CTRL_C(){
   echo ""
-  msg -verm2 "Instalación cancelada"
+  echo "[!] Cancelado"
   rm -rf ${module} 2>/dev/null
   exit 1
 }
 
 trap "CTRL_C" INT TERM EXIT
-
-# Variables
-VPS_SN="/etc/VPS-SN"
-VPS_inst="${VPS_SN}/install"
-SCPinstal="$HOME/install"
-
-mkdir -p ${VPS_SN} ${VPS_inst} ${SCPinstal} 2>/dev/null
-
-# Zona horaria
-rm -rf /etc/localtime 2>/dev/null
-ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime 2>/dev/null
-
-echo "[+] Zona horaria: Mexico_City"
 
 # Detectar SO
 os_system(){
@@ -141,30 +95,27 @@ os_system(){
   fi
 }
 
+# Reboot
 time_reboot(){
   local REBOOT_TIMEOUT=$1
   print_center -ama "REINICIANDO EN $REBOOT_TIMEOUT SEGUNDOS"
   
   while [[ $REBOOT_TIMEOUT -gt 0 ]]; do
-    echo -ne "\r-$REBOOT_TIMEOUT-"
+    echo -ne "\r$REBOOT_TIMEOUT segundos..."
     sleep 1
     ((REBOOT_TIMEOUT--))
   done
+  echo ""
   reboot
 }
 
+# Dependencias
 dependencias(){
   title "INSTALANDO DEPENDENCIAS"
   
   soft="sudo bsdmainutils zip unzip curl python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq git htop vim tmux psmisc wget net-tools figlet lolcat"
 
-  total=$(echo $soft | wc -w)
-  count=0
-  
   for paquete in $soft; do
-    count=$((count + 1))
-    pct=$((count * 100 / total))
-    
     leng="${#paquete}"
     puntos=$(( 25 - $leng))
     pts=""
@@ -177,14 +128,9 @@ dependencias(){
     if apt-get install -y $paquete >/dev/null 2>&1; then
       msg -verd "OK"
     else
-      msg -verm2 "FAIL"
-      sleep 1
-      tput cuu1 && tput dl1 2>/dev/null
+      msg -verm2 "RETRY"
       dpkg --configure -a >/dev/null 2>&1
-      sleep 1
-      tput cuu1 && tput dl1 2>/dev/null
       
-      msg -nazu "       reintentando $paquete$pts"
       if apt-get install -y $paquete >/dev/null 2>&1; then
         msg -verd "OK"
       else
@@ -196,26 +142,31 @@ dependencias(){
   msg -bar
 }
 
+# Instalar VPS-SN
 install_VPS_SN() {
   clear && clear
   msg -bar2
-  echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
-  tput cuu1 && tput dl1 2>/dev/null
-  echo -e "$slogan"
+  echo -ne "\033[1;97m Digite su slogan: \033[1;32m"
+  read -r slogan
+  
+  if [[ -z "$slogan" ]]; then
+    slogan="@Sin_Nombre22"
+  fi
+  
+  echo -e "\033[0m"
   msg -bar2
   clear && clear
   
   mkdir -p /etc/VPS-SN/tmp >/dev/null 2>&1
   
+  echo "[+] Descargando VPS-SN..."
   cd /etc
-  echo "[+] Descargando VPS-SN.tar.xz..."
-  wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz
   
-  if [[ -e VPS-SN.tar.xz ]]; then
-    echo "[+] Extrayendo archivos..."
+  if wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz 2>/dev/null; then
+    echo "[+] Extrayendo..."
     tar -xf VPS-SN.tar.xz >/dev/null 2>&1
     rm -rf VPS-SN.tar.xz
-    echo "[+] Archivos extraidos"
+    echo "[+] Listo"
   else
     echo "[!] Error descargando, creando estructura..."
     mkdir -p /etc/VPS-SN/install
@@ -252,39 +203,38 @@ install_VPS_SN() {
   msg -bar2
 }
 
+# Post reboot
 post_reboot(){
   echo 'wget -q -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh" && chmod +x /root/install.sh && /root/install.sh --continue' >> /root/.bashrc
-  title "CONTINUACIÓN TRAS REBOOT"
-  print_center -ama "La instalación continuará después del reinicio"
 }
 
+# Inicio instalación
 install_start(){
   title "INSTALADOR VPS-SN By @Sin_Nombre22"
-  print_center -ama "Se actualizarán los paquetes del sistema.\nEsto puede tomar tiempo..."
+  print_center -ama "Se actualizarán paquetes del sistema"
   msg -bar3
   
-  echo -ne "\033[1;37m ¿Desea continuar? [S/N]: "
+  echo -ne "\033[1;37m ¿Continuar? [S/N]: "
   read -r opcion
   
   if [[ "$opcion" != @(s|S) ]]; then
-    title "INSTALACION CANCELADA"
+    title "CANCELADO"
     exit 1
   fi
   
-  title "INSTALADOR VPS-SN By @Sin_Nombre22"
   os_system
   
   echo "[+] Sistema: $distro $vercion"
-  echo "[+] Ejecutando: apt-get update"
+  echo "[+] Actualizando..."
   apt-get update -y >/dev/null 2>&1
-  
-  echo "[+] Ejecutando: apt-get upgrade"
   DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1
+  echo "[+] Listo"
   
   msg -bar
   post_reboot
 }
 
+# Continuar
 install_continue(){
   os_system
   title "INSTALADOR VPS-SN By @Sin_Nombre22"
@@ -296,33 +246,33 @@ install_continue(){
   msg -bar
 }
 
-# FLUJO PRINCIPAL
-case "${1:-}" in
+# FLUJO
+case "${1:-none}" in
   -s|--start)
-    echo "[+] Iniciando instalación..."
+    echo "[+] Iniciando..."
     install_start
     time_reboot "15"
     ;;
     
   -c|--continue)
-    echo "[+] Continuando instalación..."
+    echo "[+] Continuando..."
     rm -f /root/install.sh 2>/dev/null
     sed -i '/VPS-SN/d' /root/.bashrc 2>/dev/null
     install_continue
-    echo "[+] VPS-SN instalado exitosamente"
+    echo "[+] ¡Completado!"
     time_reboot "10"
     ;;
     
   -u|--update)
-    echo "[+] Actualizando VPS-SN..."
+    echo "[+] Actualizando..."
     install_start
     install_continue
-    echo "[+] VPS-SN actualizado"
+    echo "[+] ¡Completado!"
     time_reboot "10"
     ;;
     
-  *)
-    echo "[+] Instalación directa..."
+  none|*)
+    echo "[+] Iniciando instalación..."
     install_start
     post_reboot
     time_reboot "15"
