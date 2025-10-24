@@ -89,19 +89,19 @@ dependencias(){
 
 post_reboot(){
   echo 'wget -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh"; clear; sleep 2; chmod +x /root/install.sh; /root/install.sh --continue' >> /root/.bashrc
-  title "INSTALADOR VPS-SN"
+  title "INSTALADOR VPS-SN By @Sin_Nombre22"
   print_center -ama "La instalacion continuara\ndespues del reinicio!!!"
   msg -bar
 }
 
 install_start(){
-  title "INSTALADOR VPS-SN"
+  title "INSTALADOR VPS-SN By @Sin_Nombre22"
   print_center -ama "A continuacion se actualizaran los paquetes\ndel systema. Esto podria tomar tiempo,\ny requerir algunas preguntas\npropias de las actualizaciones."
   msg -bar3
   msg -ne " Desea continuar? [S/N]: "
   read opcion
   [[ "$opcion" != @(s|S) ]] && stop_install
-  title "INSTALADOR VPS-SN"
+  title "INSTALADOR VPS-SN By @Sin_Nombre22"
   os_system
   repo "${vercion}"
   apt update -y; apt upgrade -y  
@@ -109,7 +109,7 @@ install_start(){
 
 install_continue(){
   os_system
-  title "INSTALADOR VPS-SN"
+  title "INSTALADOR VPS-SN By @Sin_Nombre22"
   print_center -ama "$distro $vercion"
   print_center -verd "INSTALANDO DEPENDENCIAS"
   msg -bar3
@@ -168,7 +168,7 @@ install_VPS_SN(){
 
   update-locale LANG=en_US.UTF-8 LANGUAGE=en
   clear
-  title "-- VPS-SN INSTALADO --"
+  title "-- VPS-SN INSTALADO BY @Sin_Nombre22 --"
 }
 
 while :
@@ -188,7 +188,7 @@ do
   esac
 done
 
-title "INSTALADOR VPS-SN"
+title "INSTALADOR VPS-SN By @Sin_Nombre22"
 install_VPS_SN
 
 mv -f ${module} /etc/VPS-SN/module
