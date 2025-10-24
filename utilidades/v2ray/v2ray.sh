@@ -1,6 +1,8 @@
 #!/bin/bash
 # Author: Jrohy
 # github: https://github.com/Jrohy/multi-v2ray
+# Adaptado para VPS-SN By @Sin_Nombre22
+# Fecha: 2025-10-24 09:47:08 UTC
 
 #定时任务北京执行时间(0~23)
 BEIJING_UPDATE_TIME=3
@@ -46,7 +48,7 @@ colorEcho(){
 }
 
 msg () {
-local colors="${ADM_tmp}/ADM-color"
+local colors="${VPS_tmp}/ADM-color"
 if [[ ! -e $colors ]]; then
 COLOR[0]='\033[1;37m' #BRAN='\033[1;37m'
 COLOR[1]='\e[31m' #VERMELHO='\e[31m'
@@ -80,7 +82,7 @@ SEMCOR='\e[0m'
   -azu)cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
   -verd)cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
   -bra)cor="${COLOR[0]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}";;
-  "-bar2"|"-bar")cor="${COLOR[1]}════════════════════════════════════════════════════" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
+  "-bar2"|"-bar")cor="${COLOR[1]}=====================================================" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
   -bar3)cor="${COLOR[1]}-----------------------------------------------------" && echo -e "${SEMCOR}${cor}${SEMCOR}";;
  esac
 }
@@ -311,7 +313,7 @@ installFinish() {
     tmp='/etc/v2ray/temp.json'
     jq 'del(.inbounds[].streamSettings.kcpSettings[])' < /etc/v2ray/config.json >> /etc/v2ray/tmp.json
     rm -rf /etc/v2ray/config.json
-    jq '.inbounds[].streamSettings += {"network":"ws","wsSettings":{"path": "/ADMRufu/","headers": {"Host": "ejemplo.com"}}}' < /etc/v2ray/tmp.json >> /etc/v2ray/config.json
+    jq '.inbounds[].streamSettings += {"network":"ws","wsSettings":{"path": "/SinNombre/","headers": {"Host": "ejemplo.com"}}}' < /etc/v2ray/tmp.json >> /etc/v2ray/config.json
     chmod 777 /etc/v2ray/config.json
 
     if [[ ${INSTALL_WAY} == 0 ]]; then
