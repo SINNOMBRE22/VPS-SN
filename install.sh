@@ -2,15 +2,15 @@
 
 # VPS-SN - Instalador Unificado COMPLETO
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 04:30:54 UTC
-# Testing y Correcciones
+# Fecha: 2025-10-24 04:36:18 UTC
+# Correcciones: msgi → msg, apt → apt-get
 
 set -e  # Salir si hay error
 
 module="$(pwd)/module"
 rm -rf ${module} 2>/dev/null
 
-# Descargar módulo con verificación
+# Funciones básicas de mensajes (en caso de fallo del módulo)
 msg_info() {
   echo -e "\033[1;36m[INFO]\033[0m $1"
 }
@@ -21,6 +21,10 @@ msg_error() {
 
 msg_ok() {
   echo -e "\033[1;32m[OK]\033[0m $1"
+}
+
+msg_warning() {
+  echo -e "\033[1;33m[WARNING]\033[0m $1"
 }
 
 # Intentar descargar módulo
@@ -131,7 +135,7 @@ dependencias(){
 
 install_VPS_SN(){
   clear
-  msgi -bar2
+  msg -bar2
   echo -ne "\033[1;97m Digite su slogan: \033[1;32m"
   read -r slogan
   
@@ -140,7 +144,7 @@ install_VPS_SN(){
   fi
   
   echo -e "\033[0m"
-  msgi -bar2
+  msg -bar2
   clear
   
   msg_info "Creando directorios..."
@@ -201,13 +205,13 @@ install_VPS_SN(){
   msg_ok "Locale configurado"
   
   clear
-  msgi -bar2
+  msg -bar2
   echo -e "\033[1;32m             >> INSTALACION COMPLETADA <<"
-  msgi -bar2
+  msg -bar2
   echo -e "      COMANDO PRINCIPAL PARA ENTRAR AL PANEL "
   echo -e "                      \033[1;41m  menu  \033[0;37m"
   echo -e "                 Reseller: $slogan"
-  msgi -bar2
+  msg -bar2
 }
 
 post_reboot(){
@@ -232,11 +236,11 @@ install_start(){
   
   msg_info "Sistema detectado: $distro $vercion"
   
-  msg_info "Actualizando repositorios..."
+  msg_info "Actualizando repositorios con apt-get update..."
   apt-get update -y >/dev/null 2>&1
   msg_ok "Repositorios actualizados"
   
-  msg_info "Actualizando paquetes..."
+  msg_info "Actualizando paquetes del sistema con apt-get upgrade..."
   DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1
   msg_ok "Paquetes actualizados"
   
