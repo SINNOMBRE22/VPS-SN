@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# VPS-SN - Instalador Mejorado v2
+# VPS-SN - Instalador Completo v3
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-24 05:08:00 UTC
+# Fecha: 2025-10-24 05:10:36 UTC
 
 clear
 
@@ -11,8 +11,6 @@ if [[ $EUID -ne 0 ]]; then
    echo "[!] Este script debe ejecutarse como root"
    exit 1
 fi
-
-set -e
 
 echo "[+] Inicializando VPS-SN..."
 
@@ -49,21 +47,26 @@ fi
 # libcurl
 echo "[+] Instalando libcurl4-openssl-dev..."
 apt-get install -y libcurl4-openssl-dev >/dev/null 2>&1
+echo "[+] libcurl instalado"
 
 # Descargar módulo
 echo "[+] Descargando módulo..."
 module="/tmp/module"
 rm -rf ${module} 2>/dev/null
-wget -q -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module"
 
-if [[ ! -e ${module} ]]; then
+if wget -q -O ${module} "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Herramientas-main/module/module" 2>/dev/null; then
+    if [[ -e ${module} ]] && [[ -s ${module} ]]; then
+        chmod +x ${module}
+        source ${module}
+        echo "[+] Módulo cargado"
+    else
+        echo "[!] Módulo vacío"
+        exit 1
+    fi
+else
     echo "[!] Error descargando módulo"
     exit 1
 fi
-
-chmod +x ${module}
-source ${module}
-echo "[+] Módulo cargado"
 
 # Variables
 VPS_SN="/etc/VPS-SN"
@@ -140,6 +143,7 @@ dependencias(){
   done
   
   msg -bar
+  echo "[+] Dependencias instaladas"
 }
 
 # Instalar VPS-SN
@@ -164,16 +168,20 @@ install_VPS_SN() {
   
   if wget -q https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz -O VPS-SN.tar.xz 2>/dev/null; then
     echo "[+] Extrayendo..."
-    tar -xf VPS-SN.tar.xz >/dev/null 2>&1
-    rm -rf VPS-SN.tar.xz
-    echo "[+] Listo"
+    if tar -xf VPS-SN.tar.xz >/dev/null 2>&1; then
+      rm -rf VPS-SN.tar.xz
+      echo "[+] Archivos listos"
+    else
+      echo "[!] Error extrayendo"
+      mkdir -p /etc/VPS-SN/install
+    fi
   else
     echo "[!] Error descargando, creando estructura..."
     mkdir -p /etc/VPS-SN/install
   fi
   
   cd ~
-  chmod -R 755 /etc/VPS-SN
+  chmod -R 755 /etc/VPS-SN 2>/dev/null
   
   rm -rf /usr/bin/menu /usr/bin/adm /usr/bin/VPS-SN 2>/dev/null
   
@@ -201,11 +209,13 @@ install_VPS_SN() {
   echo -e "                      \033[1;41m  menu  \033[0;37m"
   echo -e "                   Reseller: $slogan"
   msg -bar2
+  echo "[+] Instalación finalizada"
 }
 
 # Post reboot
 post_reboot(){
-  echo 'wget -q -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh" && chmod +x /root/install.sh && /root/install.sh --continue' >> /root/.bashrc
+  echo "[+] Configurando reinicio..."
+  echo 'wget -q -O /root/install.sh "https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh" 2>/dev/null && chmod +x /root/install.sh && /root/install.sh --continue' >> /root/.bashrc
 }
 
 # Inicio instalación
@@ -228,10 +238,11 @@ install_start(){
   echo "[+] Actualizando..."
   apt-get update -y >/dev/null 2>&1
   DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >/dev/null 2>&1
-  echo "[+] Listo"
+  echo "[+] Sistema actualizado"
   
   msg -bar
   post_reboot
+  echo "[+] Post-reboot configurado"
 }
 
 # Continuar
@@ -244,38 +255,58 @@ install_continue(){
   dependencias
   install_VPS_SN
   msg -bar
+  echo "[+] ¡Completado!"
 }
 
-# FLUJO
-case "${1:-none}" in
+# MENU
+show_menu(){
+  echo ""
+  echo "[*] VPS-SN Instalador"
+  echo ""
+  echo "    -s, --start      Iniciar instalación"
+  echo "    -c, --continue   Continuar tras reboot"
+  echo "    -u, --update     Actualizar"
+  echo ""
+}
+
+# FLUJO PRINCIPAL
+case "${1:-}" in
   -s|--start)
-    echo "[+] Iniciando..."
+    echo "[+] Iniciando instalación..."
+    sleep 1
     install_start
+    echo "[+] Reiniciando en 15 segundos..."
     time_reboot "15"
     ;;
     
   -c|--continue)
-    echo "[+] Continuando..."
+    echo "[+] Continuando instalación..."
+    sleep 1
     rm -f /root/install.sh 2>/dev/null
     sed -i '/VPS-SN/d' /root/.bashrc 2>/dev/null
     install_continue
-    echo "[+] ¡Completado!"
+    echo "[+] Reiniciando en 10 segundos..."
     time_reboot "10"
     ;;
     
   -u|--update)
     echo "[+] Actualizando..."
+    sleep 1
     install_start
     install_continue
-    echo "[+] ¡Completado!"
+    echo "[+] Reiniciando en 10 segundos..."
     time_reboot "10"
     ;;
     
-  none|*)
-    echo "[+] Iniciando instalación..."
-    install_start
-    post_reboot
-    time_reboot "15"
+  -h|--help)
+    show_menu
+    exit 0
+    ;;
+    
+  *)
+    echo "[+] Uso: $0 {-s|--start|-c|--continue|-u|--update|-h|--help}"
+    show_menu
+    exit 1
     ;;
 esac
 
