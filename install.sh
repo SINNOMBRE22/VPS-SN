@@ -37,7 +37,7 @@ stop_install(){
 }
 
 time_reboot(){
-  print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
+  print_center -ama "EL MENU ESTARA INSTALADO DESPUES DE LA INSTALACION"
   REBOOT_TIMEOUT="$1"
 
   while [ $REBOOT_TIMEOUT -gt 0 ]; do
@@ -59,43 +59,22 @@ repo_install(){
 dependencias(){
   soft="sudo bsdmainutils zip unzip ufw curl python python3 python3-pip openssl screen cron iptables lsof nano at mlocate gawk grep bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat sqlite3 libsqlite3-dev locales"
 
-  for install in $soft; do
-    leng="${#install}"
-    puntos=$(( 21 - $leng))
-    pts="."
-    for (( a = 0; a < $puntos; a++ )); do
-      pts+="."
-    done
-    msg -nazu "      instalando $install $(msg -ama "$pts")"
-    if apt install $install -y &>/dev/null ; then
-      msg -verd "INSTALL"
+  msg -bar3
+  print_center -verd "INSTALANDO TODAS LAS DEPENDENCIAS"
+  msg -bar3
+  
+  if apt install $soft -y &>/dev/null ; then
+    print_center -verd "TODAS LAS DEPENDENCIAS INSTALADAS CORRECTAMENTE"
+  else
+    print_center -verm "ALGUNAS DEPENDENCIAS FALLARON. INTENTANDO REPARAR..."
+    dpkg --configure -a &>/dev/null
+    apt -f install -y &>/dev/null
+    if apt install $soft -y --fix-missing &>/dev/null ; then
+      print_center -verd "DEPENDENCIAS INSTALADAS DESPUES DE REPARACION"
     else
-      msg -verm2 "FAIL"
-      sleep 2
-      del 1
-      if [[ $install = "python" ]]; then
-        pts=$(echo ${pts:1})
-        msg -nazu "      instalando python2 $(msg -ama "$pts")"
-        if apt install python2 -y &>/dev/null ; then
-          [[ ! -e /usr/bin/python ]] && ln -s /usr/bin/python2 /usr/bin/python
-          msg -verd "INSTALL"
-        else
-          msg -verm2 "FAIL"
-        fi
-        continue
-      fi
-      print_center -ama "aplicando fix a $install"
-      dpkg --configure -a &>/dev/null
-      sleep 2
-      del 1
-      msg -nazu "      instalando $install $(msg -ama "$pts")"
-      if apt install $install -y &>/dev/null ; then
-        msg -verd "INSTALL"
-      else
-        msg -verm2 "FAIL"
-      fi
+      print_center -verm "ALGUNAS DEPENDENCIAS SIGUEN FALLANDO. PUEDES INSTALARLAS MANUALMENTE CON: apt install <paquete>"
     fi
-  done
+  fi
 }
 
 verificar_arq(){
@@ -140,16 +119,11 @@ install_start(){
 install_continue(){
   title "INSTALADOR VPS-SN"
   print_center -ama "$PRETTY_NAME"
-  print_center -verd "INSTALANDO DEPENDENCIAS"
-  msg -bar3
   dependencias
   msg -bar3
   print_center -azu "Removiendo paquetes obsoletos"
   apt autoremove -y &>/dev/null
   sleep 2
-  tput cuu1 && tput dl1
-  print_center -ama "si algunas de las dependencias falla!!!\nal terminar, puede intentar instalar\nla misma manualmente usando el siguiente comando\napt install nom_del_paquete"
-  enter
 }
 
 source /etc/os-release; export PRETTY_NAME
@@ -185,7 +159,7 @@ echo "$ver" > ${VPS_SN}/vercion
 
 title -ama '[Proyecto by @Sin_Nombre22]'
 print_center -ama 'INSTALANDO SCRIPT VPS-SN'
-sleep 2; del 1
+sleep 2
 
 [[ ! -d ${SCPinstal} ]] && mkdir ${SCPinstal}
 print_center -ama 'Descarga de archivos.....'
@@ -194,14 +168,11 @@ for arqx in $(echo $arch); do
   wget -O ${SCPinstal}/${arqx} ${lisArq}/${arqx} > /dev/null 2>&1 && {
     verificar_arq "${arqx}"
   } || {
-    del 1
     print_center -verm2 'Instalacion fallida de $arqx'
     sleep 2s
     error_fun "${arqx}"
   }
 done
-
-del 1
 
 print_center -verd 'Instalacion completa'
 sleep 2s
