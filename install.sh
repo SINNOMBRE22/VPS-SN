@@ -1,6 +1,6 @@
 #!/bin/bash
-# MULTI-SCRIPT - Instalador Unificado
-# ACTUALIZADO EL 24-10-2025 -- By @Kalix1
+# VPS-SN - Instalador Unificado
+# ACTUALIZADO EL 26-10-2025 -- By @Sin_Nombre22
 
 clear && clear
 module="$(pwd)/module"
@@ -66,7 +66,7 @@ dependencias() {
     print_center -ama "-- INSTALACIÓN DE DEPENDENCIAS --"
     echo ""
     
-    # Lista de paquetes a instalar
+    # Lista de paquetes a instalar (todas juntas)
     local packages=(
         "sudo" "bsdmainutils" "zip" "screen" "unzip" "ufw" "curl" 
         "python3" "python3-pip" "openssl" "cron" "iptables" "lsof" 
@@ -109,33 +109,6 @@ os_system() {
 # ========== INSTALACIÓN INICIAL ==========
 install_inicial() {
   clear && clear
-  #--VERIFICAR IP MANUAL
-  tu_ip() {
-    echo ""
-    echo -ne "\e[1;96m #Digite tu IP Publica (IPV4): \e[32m" && read IP
-    val_ip() {
-      local ip=$IP
-      local stat=1
-      if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        OIFS=$IFS
-        IFS='.'
-        ip=($ip)
-        IFS=$OIFS
-        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
-        stat=$?
-      fi
-      return $stat
-    }
-    if val_ip $IP; then
-      echo "$IP" >/root/.ssh/authrized_key.reg
-    else
-      echo ""
-      echo -e "\e[31mLa IP Digitada no es valida, Verifiquela"
-      echo ""
-      sleep 5s
-      tu_ip
-    fi
-  }
   
   #CONFIGURAR SSH-ROOT PRINCIPAL
   pass_root() {
@@ -178,17 +151,6 @@ password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pa
   service ssh restart >/dev/null 2>&1
   echo ""
   
-  fun_ip() {
-    TUIP=$(curl -s ifconfig.me)
-    echo "$TUIP" >/root/.ssh/authrized_key.reg
-    print_center -ama "¿ESTA ES TU IP PÚBLICA? $TUIP"
-    echo ""
-    print_center -ama "Seleccione [S/N]: "
-    read -n 1 tu_ip
-    [[ "$tu_ip" = "n" || "$tu_ip" = "N" ]] && tu_ip
-  }
-  fun_ip
-  
   title "AGREGAR Y EDITAR PASS ROOT"
   print_center -ama "¿CAMBIAR PASS ROOT?"
   echo ""
@@ -196,14 +158,17 @@ password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pa
   read -n 1 pass_root_input
   [[ "$pass_root_input" = "s" || "$pass_root_input" = "S" ]] && pass_root
   
-  print_center -ama "SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES"
+  print_center -ama "ACTUALIZANDO SISTEMA"
   print_center -ama "ESTE PROCESO PUEDE TARDAR VARIOS MINUTOS"
-  print_center -ama "Y PUEDE PEDIR ALGUNAS CONFIRMACIONES"
   echo ""
   read -t 120 -n 1 -rsp $'\e[1;97m           Presiona Enter Para continuar\n'
   clear && clear
-  apt update
-  apt upgrade -y
+  apt update && apt upgrade -y
+  if [ $? -ne 0 ]; then
+    echo -e "\e[1;31m ERROR EN ACTUALIZACION. INTENTANDO NUEVAMENTE..."
+    apt update --fix-missing && apt upgrade -y
+  fi
+  echo -e "\e[1;32m SISTEMA ACTUALIZADO CORRECTAMENTE."
   wget -O /usr/bin/install https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/install.sh &>/dev/null
   chmod +rwx /usr/bin/install
 }
@@ -231,10 +196,6 @@ install_paquetes() {
 install_VPS_SN() {
   clear && clear
   title "INSTALACIÓN VPS-SN"
-  print_center -ama "Digite su slogan: "
-  read slogan
-  tput cuu1 && tput dl1
-  echo -e "$slogan"
   
   mkdir /etc/VPS-SN >/dev/null 2>&1
   mkdir /etc/VPS-SN/tmp >/dev/null 2>&1
@@ -257,7 +218,7 @@ install_VPS_SN() {
   rm -rf /usr/bin/adm
   rm -rf /usr/bin/VPS-SN
   
-  echo "$slogan" >/etc/VPS-SN/tmp/message.txt
+  echo "Sin_Nombre22" >/etc/VPS-SN/tmp/message.txt
   echo "${VPS_SN}/menu" >/usr/bin/menu && chmod +x /usr/bin/menu
   echo "${VPS_SN}/menu" >/usr/bin/adm && chmod +x /usr/bin/adm
   echo "${VPS_SN}/menu" >/usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
@@ -279,15 +240,29 @@ install_VPS_SN() {
   print_center -verd "menu"
 }
 
+# ========== TIME REBOOT ==========
+time_reboot() {
+  clear && clear
+  title "REINICIO DEL SISTEMA"
+  print_center -ama "EL MENU ESTARA INSTALADO DESPUES DE LA INSTALACION"
+  REBOOT_TIMEOUT="$1"
+  while [ $REBOOT_TIMEOUT -gt 0 ]; do
+    print_center -ne "-$REBOOT_TIMEOUT-\r"
+    sleep 1
+    : $((REBOOT_TIMEOUT--))
+  done
+  reboot
+}
+
 # ========== SELECTOR DE INSTALACION ==========
 while :; do
   case $1 in
   -s | --start)
-    install_inicial && install_paquetes
+    install_inicial && install_paquetes && install_VPS_SN && time_reboot "10"
     break
     ;;
   -c | --continue)
-    install_paquetes
+    install_paquetes && install_VPS_SN && time_reboot "10"
     break
     ;;
   -m | --menu)
@@ -304,8 +279,4 @@ while :; do
   esac
 done
 
-# ========== INSTALAR VPS-SN AL FINAL ==========
-install_VPS_SN
-
 mv -f ${module} /etc/VPS-SN/module
-time_reboot "5"
