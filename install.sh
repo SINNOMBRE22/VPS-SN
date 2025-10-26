@@ -2,8 +2,8 @@
 
 # VPS-SN - Instalador con Funciones del Instalador LATAM
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-26 13:16:33 UTC
-# Adaptado con funciones de NetVPS/LATAM
+# Fecha: 2025-10-26 15:32:34 UTC
+# Adaptado con funciones de NetVPS/Multi-Script
 
 clear && clear
 
@@ -61,7 +61,7 @@ barra_intall() {
   echo -e " \033[1;32m[OK]\033[0m"
 }
 
-# 4. CAMBIAR CONTRASEÑA ROOT (sin cambios, pero mantenido)
+# 4. CAMBIAR CONTRASEÑA ROOT
 pass_root() {
   wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/utilidades/sshd_config >/dev/null 2>&1
   chmod +rwx /etc/ssh/sshd_config
@@ -78,7 +78,7 @@ pass_root() {
   echo -e "\e[1;97m TU CONTRASEÑA ROOT AHORA ES: \e[41m $pass \e[0;37m"
 }
 
-# 5. REBOOT CON COUNTDOWN (mensaje modificado)
+# 5. REBOOT CON COUNTDOWN
 time_reboot() {
   clear && clear
   msg -bar
@@ -93,25 +93,25 @@ time_reboot() {
   reboot
 }
 
-# 6. INSTALAR DEPENDENCIAS (mejorado con verificaciones)
+# 6. INSTALAR DEPENDENCIAS (como en el ejemplo, instalando todas juntas y con manejo de errores)
 dependencias() {
   rm -rf /root/paknoinstall.log >/dev/null 2>&1
+  rm -rf /root/packinstall.log >/dev/null 2>&1
   dpkg --configure -a >/dev/null 2>&1
   apt -f install -y >/dev/null 2>&1
   
-  soft="sudo bsdmainutils zip screen unzip curl python3 python3-pip openssl cron iptables lsof pv at mlocate gawk bc jq npm nodejs socat netcat net-tools cowsay figlet lolcat apache2"
-
-  for i in $soft; do
-    echo -e "\e[1;97m        INSTALANDO PAQUETE \e[93m ------ \e[36m $i"
-    barra_intall "apt-get install $i -y"
-    if [ $? -ne 0 ]; then
-      echo -e "\e[1;31m        ERROR INSTALANDO $i. INTENTANDO NUEVAMENTE..."
-      apt-get install $i -y --fix-missing
-    fi
-  done
+  soft="sudo bsdmainutils zip screen unzip ufw curl python python3 python3-pip openssl cron iptables lsof pv boxes at mlocate gawk bc jq npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat apache2"
+  
+  echo -e "\e[1;97m INSTALANDO DEPENDENCIAS ESENCIALES..."
+  apt-get install $soft -y >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo -e "\e[1;31m ERROR EN INSTALACION. INTENTANDO REPARAR Y REINSTALAR..."
+    apt -f install -y && apt-get install $soft -y --fix-missing
+  fi
+  echo -e "\e[1;32m DEPENDENCIAS INSTALADAS CORRECTAMENTE."
 }
 
-# 7. INSTALACIÓN INICIAL (sin confirmación de IP)
+# 7. INSTALACIÓN INICIAL (sin confirmación de IP, actualización inmediata como en el ejemplo)
 install_inicial() {
   clear && clear
   
@@ -124,9 +124,9 @@ install_inicial() {
   echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read pass_root_option
   [[ "$pass_root_option" = "s" || "$pass_root_option" = "S" ]] && pass_root
   
-  # Actualizar sistema (mejorado)
+  # Actualizar sistema inmediatamente (como en el ejemplo)
   msg -bar
-  echo -e "\e[1;93m\a\a\a      SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES"
+  echo -e "\e[1;93m\a\a\a      ACTUALIZANDO SISTEMA..."
   msg -bar
   read -t 60 -n 1 -rsp $'\e[1;97m           Presiona Enter Para continuar\n'
   clear && clear
@@ -138,11 +138,12 @@ install_inicial() {
   echo -e " \e[5m\e[1;100m   =====>> ►►     VPS-SN     ◄◄ <<=====    \e[1;37m"
   msg -bar
   
-  apt update -y && apt upgrade -y
+  apt update && apt upgrade -y
   if [ $? -ne 0 ]; then
-    echo -e "\e[1;31m        ERROR EN ACTUALIZACION. INTENTANDO NUEVAMENTE..."
-    apt update -y --fix-missing && apt upgrade -y
+    echo -e "\e[1;31m ERROR EN ACTUALIZACION. INTENTANDO NUEVAMENTE..."
+    apt update --fix-missing && apt upgrade -y
   fi
+  echo -e "\e[1;32m SISTEMA ACTUALIZADO CORRECTAMENTE."
 }
 
 # 8. INSTALAR PAQUETES
