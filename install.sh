@@ -38,7 +38,7 @@ os_system() {
 repo() {
   link="https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Repositorios/$1.list"
   case $1 in
-  8 | 9 | 10 | 11 | 16.04 | 18.04 | 20.04 | 20.10 | 21.04 | 21.10 | 22.04)
+  8|9|10|11|16.04|18.04|20.04|20.10|21.04|21.10|22.04)
     wget -O /etc/apt/sources.list ${link} &>/dev/null
     ;;
   esac
@@ -93,25 +93,65 @@ time_reboot() {
   reboot
 }
 
-# 6. INSTALAR DEPENDENCIAS (como en el ejemplo, instalando todas juntas y con manejo de errores)
+# 6. INSTALAR DEPENDENCIAS - VERSIÓN MEJORADA
 dependencias() {
   rm -rf /root/paknoinstall.log >/dev/null 2>&1
   rm -rf /root/packinstall.log >/dev/null 2>&1
+  
+  # Reparar sistema primero
+  echo -e "\e[1;97m REPARANDO SISTEMA..."
   dpkg --configure -a >/dev/null 2>&1
   apt -f install -y >/dev/null 2>&1
+  apt --fix-broken install -y >/dev/null 2>&1
   
-  soft="sudo bsdmainutils zip screen unzip ufw curl python python3 python3-pip openssl cron iptables lsof pv boxes at mlocate gawk bc jq npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat apache2"
+  # Actualizar lista de paquetes
+  echo -e "\e[1;97m ACTUALIZANDO LISTA DE PAQUETES..."
+  apt update >/dev/null 2>&1
+  
+  # Lista completa de dependencias
+  soft=(
+    sudo bsdmainutils zip screen unzip ufw 
+    curl python3 python3-pip openssl cron 
+    iptables lsof pv boxes at mlocate gawk 
+    bc jq npm nodejs socat netcat 
+    netcat-traditional net-tools cowsay 
+    figlet lolcat apache2 python2
+  )
   
   echo -e "\e[1;97m INSTALANDO DEPENDENCIAS ESENCIALES..."
-  apt-get install $soft -y >/dev/null 2>&1
-  if [ $? -ne 0 ]; then
-    echo -e "\e[1;31m ERROR EN INSTALACION. INTENTANDO REPARAR Y REINSTALAR..."
-    apt -f install -y && apt-get install $soft -y --fix-missing
+  echo -e "\e[1;90m (Esto puede tomar varios minutos...)\e[0m"
+  msg -bar
+  
+  # Instalar paquetes uno por uno para mejor control
+  for paquete in "${soft[@]}"; do
+    echo -ne "\e[1;97m Instalando: \e[1;93m$paquete"
+    if apt install "$paquete" -y >/dev/null 2>&1; then
+      echo -e "\r\e[1;97m Instalando: \e[1;92m$paquete ✅\e[0m"
+    else
+      echo -e "\r\e[1;97m Instalando: \e[1;91m$paquete ❌\e[0m"
+      echo "$paquete" >> /root/paknoinstall.log
+    fi
+    sleep 1
+  done
+  
+  # Verificar si hay paquetes fallidos
+  if [[ -f /root/paknoinstall.log ]]; then
+    echo -e "\n\e[1;91m ALGUNOS PAQUETES NO SE PUDIERON INSTALAR:\e[0m"
+    cat /root/paknoinstall.log
+    echo -e "\e[1;93m Reintentando instalación de paquetes fallidos...\e[0m"
+    
+    while read -r paquete_fallido; do
+      apt install "$paquete_fallido" -y --fix-missing >/dev/null 2>&1 && \
+        echo -e "\e[1;92m ✅ $paquete_fallido instalado en segundo intento\e[0m" || \
+        echo -e "\e[1;91m ❌ $paquete_fallido sigue fallando\e[0m"
+    done < /root/paknoinstall.log
   fi
-  echo -e "\e[1;32m DEPENDENCIAS INSTALADAS CORRECTAMENTE."
+  
+  echo -e "\e[1;92m DEPENDENCIAS INSTALADAS CORRECTAMENTE.\e[0m"
+  msg -bar
 }
 
-# 7. INSTALACIÓN INICIAL (sin confirmación de IP, actualización inmediata como en el ejemplo)
+# 7. INSTALACIÓN INICIAL
 install_inicial() {
   clear && clear
   
@@ -124,7 +164,7 @@ install_inicial() {
   echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read pass_root_option
   [[ "$pass_root_option" = "s" || "$pass_root_option" = "S" ]] && pass_root
   
-  # Actualizar sistema inmediatamente (como en el ejemplo)
+  # Actualizar sistema
   msg -bar
   echo -e "\e[1;93m\a\a\a      ACTUALIZANDO SISTEMA..."
   msg -bar
@@ -138,12 +178,13 @@ install_inicial() {
   echo -e " \e[5m\e[1;100m   =====>> ►►     VPS-SN     ◄◄ <<=====    \e[1;37m"
   msg -bar
   
+  echo -e "\e[1;97m ACTUALIZANDO SISTEMA...\e[0m"
   apt update && apt upgrade -y
   if [ $? -ne 0 ]; then
-    echo -e "\e[1;31m ERROR EN ACTUALIZACION. INTENTANDO NUEVAMENTE..."
+    echo -e "\e[1;31m ERROR EN ACTUALIZACION. INTENTANDO REPARAR...\e[0m"
     apt update --fix-missing && apt upgrade -y
   fi
-  echo -e "\e[1;32m SISTEMA ACTUALIZADO CORRECTAMENTE."
+  echo -e "\e[1;32m SISTEMA ACTUALIZADO CORRECTAMENTE.\e[0m"
 }
 
 # 8. INSTALAR PAQUETES
@@ -155,10 +196,9 @@ install_paquetes() {
   echo -e "   \e[1;41m    -- INSTALACION PAQUETES FALTANTES --    \e[49m"
   msg -bar
   dependencias
-  msg -bar
 }
 
-# 9. INSTALAR VPS-SN (reseller por defecto: Sin_Nombre22)
+# 9. INSTALAR VPS-SN
 install_VPS_SN() {
   clear && clear
   
@@ -166,20 +206,23 @@ install_VPS_SN() {
   mkdir -p /etc/VPS-SN/tmp >/dev/null 2>&1
   
   cd /etc
+  echo -e "\e[1;97m DESCARGANDO VPS-SN...\e[0m"
   wget https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/VPS-SN.tar.xz >/dev/null 2>&1
+  echo -e "\e[1;97m EXRAYENDO ARCHIVOS...\e[0m"
   tar -xf VPS-SN.tar.xz >/dev/null 2>&1
   rm -rf VPS-SN.tar.xz
   cd
   chmod -R 755 /etc/VPS-SN
   
+  # Crear comandos del sistema
   rm -rf /usr/bin/menu /usr/bin/adm /usr/bin/VPS-SN 2>/dev/null
-  
   echo "Sin_Nombre22" >/etc/VPS-SN/tmp/message.txt
   
   echo "/etc/VPS-SN/menu" >/usr/bin/menu && chmod +x /usr/bin/menu
   echo "/etc/VPS-SN/menu" >/usr/bin/adm && chmod +x /usr/bin/adm
   echo "/etc/VPS-SN/menu" >/usr/bin/VPS-SN && chmod +x /usr/bin/VPS-SN
   
+  # Configurar bashrc
   [[ -z $(echo $PATH | grep "/usr/games") ]] && echo 'if [[ $(echo $PATH|grep "/usr/games") = "" ]]; then PATH=$PATH:/usr/games; fi' >>/etc/bash.bashrc
   echo '[[ $UID = 0 ]] && screen -dmS up /etc/VPS-SN/chekup.sh' >>/etc/bash.bashrc
   echo 'echo ""' >>/etc/bash.bashrc
@@ -201,29 +244,17 @@ install_VPS_SN() {
   rm $(pwd)/$0 &> /dev/null
 }
 
-# ==================== MENÚ PRINCIPAL ====================
+# ==================== EJECUCIÓN PRINCIPAL ====================
 
 # Verificar ROOT
 if [ $(whoami) != 'root' ]; then
   echo ""
   echo -e "\e[1;31m NECESITAS SER USER ROOT PARA EJECUTAR EL SCRIPT \n\n\e[97m                DIGITE: \e[1;32m sudo su\n"
-  exit
+  exit 1
 fi
 
-# Selector de instalación
-while :; do
-  case $1 in
-  -s | --start)
-    install_inicial && install_paquetes && install_VPS_SN && time_reboot "10"
-    break
-    ;;
-  -c | --continue)
-    install_paquetes && install_VPS_SN && time_reboot "10"
-    break
-    ;;
-  *)
-    install_inicial && install_paquetes && install_VPS_SN && time_reboot "10"
-    break
-    ;;
-  esac
-done
+# Ejecutar instalación completa
+install_inicial
+install_paquetes  
+install_VPS_SN
+time_reboot "10"
