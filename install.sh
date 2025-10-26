@@ -37,21 +37,23 @@ ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
 # ========== SISTEMA MEJORADO DE INSTALACIÓN DE DEPENDENCIAS ==========
 install_package() {
     local package="$1"
-    local max_attempts=2
+    local max_attempts=3
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
+        echo -e "\e[1;97m Actualizando repositorios..."
+        apt-get update &>/dev/null
+        echo -e "\e[1;97m Intentando instalar: \e[1;96m$package\e[0m"
         if apt-get install -y "$package" &>/dev/null; then
             echo -e "\e[1;92m ✅"
             return 0
         else
             if [ $attempt -eq $max_attempts ]; then
-                echo -e "\e[1;91m ❌"
+                echo -e "\e[1;91m ❌ Error al instalar: $package"
                 return 1
             else
-                echo -ne "\e[1;93m 🔄"
+                echo -ne "\e[1;93m 🔄 Intentando nuevamente...\e[0m"
                 sleep 2
-                apt-get update &>/dev/null
             fi
         fi
         attempt=$((attempt + 1))
@@ -63,10 +65,6 @@ dependencias() {
     title "=====>> ►►     VPS-SN SCRIPT     ◄◄ <<====="
     print_center -ama "-- INSTALACIÓN DE DEPENDENCIAS --"
     echo ""
-    
-    # Actualizar lista de paquetes
-    print_center -azu "ACTUALIZANDO LISTA DE PAQUETES..."
-    apt-get update &>/dev/null
     
     # Lista de paquetes a instalar
     local packages=(
@@ -80,7 +78,6 @@ dependencias() {
     local failed_packages=()
     
     for package in "${packages[@]}"; do
-        echo -ne "\e[1;97m Instalando: \e[1;96m$package\e[0m"
         if ! install_package "$package"; then
             failed_packages+=("$package")
         fi
@@ -96,28 +93,7 @@ dependencias() {
             echo -e "\e[1;91m   $failed"
         done
         echo ""
-        print_center -ama "Se reintentarán los paquetes fallidos..."
-        
-        # Reintentar paquetes fallidos
-        local retry_failed=()
-        for package in "${failed_packages[@]}"; do
-            echo -ne "\e[1;97m Reintentando: \e[1;96m$package\e[0m"
-            if install_package "$package"; then
-                echo -e "\e[1;92m ✅ (Reintento exitoso)"
-            else
-                retry_failed+=("$package")
-            fi
-        done
-        
-        if [ ${#retry_failed[@]} -gt 0 ]; then
-            echo ""
-            print_center -verm "PAQUETES QUE NO SE PUDIERON INSTALAR:"
-            for failed in "${retry_failed[@]}"; do
-                echo -e "\e[1;91m   $failed"
-            done
-        fi
     fi
-    
     echo ""
     print_center -azu "FINALIZANDO INSTALACIÓN DE DEPENDENCIAS"
     sleep 2
@@ -125,16 +101,12 @@ dependencias() {
 
 # ========== FUNCIONES PRINCIPALES ==========
 os_system() {
-  system=$(cat -n /etc/issue | grep 1 | cut -d ' ' -f6,7,8 | sed 's/1//' | sed 's/      //')
-  distro=$(echo "$system" | awk '{print $1}')
-
-  case $distro in
-  Debian) vercion=$(echo $system | awk '{print $3}' | cut -d '.' -f1) ;;
-  Ubuntu) vercion=$(echo $system | awk '{print $2}' | cut -d '.' -f1,2) ;;
-  esac
+  system=$(cat -n /etc/issue | grep -i "ubuntu" | cut -d ' ' -f6,7,8)
+  distro="Ubuntu"
+  vercion=$(echo "$system" | awk '{print $2}' | cut -d '.' -f1,2)
 }
 
-## PRIMER PASO DE INSTALACION
+# ========== INSTALACIÓN INICIAL ==========
 install_inicial() {
   clear && clear
   #--VERIFICAR IP MANUAL
@@ -220,8 +192,8 @@ password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pa
   title "AGREGAR Y EDITAR PASS ROOT"
   print_center -ama "¿CAMBIAR PASS ROOT?"
   echo ""
-    print_center -ama "Seleccione [S/N]: "
-    read -n 1 pass_root_input
+  print_center -ama "Seleccione [S/N]: "
+  read -n 1 pass_root_input
   [[ "$pass_root_input" = "s" || "$pass_root_input" = "S" ]] && pass_root
   
   print_center -ama "SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES"
@@ -236,23 +208,7 @@ password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pa
   chmod +rwx /usr/bin/install
 }
 
-time_reboot() {
-  clear && clear
-  title "REINICIO DEL SISTEMA"
-  print_center -ama "CONTINUARÁ INSTALACIÓN DESPUÉS DEL REBOOT"
-  print_center -verd "O EJECUTE EL COMANDO: VPS-SN --continue"
-  
-  print_center -ama "REINICIANDO VPS EN $1 SEGUNDOS"
-  REBOOT_TIMEOUT="$1"
-  
-  while [ $REBOOT_TIMEOUT -gt 0 ]; do
-    print_center -ne "-$REBOOT_TIMEOUT-\r"
-    sleep 1
-    : $((REBOOT_TIMEOUT--))
-  done
-  reboot
-}
-
+# ========== INSTALACIÓN PAQUETES FALTANTES ==========
 install_paquetes() {
   clear && clear
   /bin/cp /etc/skel/.bashrc ~/
