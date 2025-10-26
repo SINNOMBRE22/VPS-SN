@@ -66,7 +66,7 @@ dependencias(){
      pts+="."
    done
    msg -nazu "       instalando $i$(msg -ama "$pts")"
-   if apt install $i -y &>/dev/null ; then
+   if apt install $i -y --force &>/dev/null ; then
      msg -verd "INSTALL"
    else
      msg -verm2 "FAIL"
@@ -77,11 +77,21 @@ dependencias(){
      sleep 2
      tput cuu1 && tput dl1
 
-     msg -nazu "       instalando $i$(msg -ama "$pts")"
-     if apt install $i -y &>/dev/null ; then
+     msg -nazu "       forzando instalacion $i$(msg -ama "$pts")"
+     if apt install $i -y --fix-broken --force &>/dev/null ; then
        msg -verd "INSTALL"
      else
-       msg -verm2 "FAIL"
+       msg -verm2 "FAIL - Purgando y reinstalando"
+       apt remove --purge $i -y &>/dev/null
+       apt autoremove -y &>/dev/null
+       sleep 2
+       tput cuu1 && tput dl1
+       msg -nazu "       reinstalando $i$(msg -ama "$pts")"
+       if apt install $i -y --force &>/dev/null ; then
+         msg -verd "INSTALL"
+       else
+         msg -verm2 "FAIL"
+       fi
      fi
    fi
  done
@@ -122,7 +132,7 @@ install_start(){
   title "INSTALADOR VPS-SN"
   os_system
   repo "${vercion}"
-  apt update -y; apt upgrade -y
+  apt update -y --force; apt upgrade -y --force
 }
 
 install_continue(){
