@@ -2,7 +2,7 @@
 
 # VPS-SN - Instalador con Funciones del Instalador LATAM
 # Proyecto: VPS-SN By @Sin_Nombre22
-# Fecha: 2025-10-26 12:47:18 UTC
+# Fecha: 2025-10-26 13:16:33 UTC
 # Adaptado con funciones de NetVPS/LATAM
 
 clear && clear
@@ -61,17 +61,7 @@ barra_intall() {
   echo -e " \033[1;32m[OK]\033[0m"
 }
 
-# 4. OBTENER IP PÚBLICA
-fun_ip() {
-  TUIP=$(wget -qO- ifconfig.me)
-  echo "$TUIP" >/root/.ssh/authrized_key.reg
-  print_center -azu "ESTA ES TU IP PUBLICA? $TUIP"
-  msg -bar
-  echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read tu_ip
-  [[ "$tu_ip" = "n" || "$tu_ip" = "N" ]] && tu_ip
-}
-
-# 5. CAMBIAR CONTRASEÑA ROOT
+# 4. CAMBIAR CONTRASEÑA ROOT (sin cambios, pero mantenido)
 pass_root() {
   wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/utilidades/sshd_config >/dev/null 2>&1
   chmod +rwx /etc/ssh/sshd_config
@@ -88,12 +78,11 @@ pass_root() {
   echo -e "\e[1;97m TU CONTRASEÑA ROOT AHORA ES: \e[41m $pass \e[0;37m"
 }
 
-# 6. REBOOT CON COUNTDOWN
+# 5. REBOOT CON COUNTDOWN (mensaje modificado)
 time_reboot() {
   clear && clear
   msg -bar
-  echo -e "\e[1;93m     CONTINUARA INSTALACION DESPUES DEL REBOOT"
-  echo -e "\e[1;93m         O EJECUTE EL COMANDO: \e[1;92mmenu"
+  echo -e "\e[1;93m     EL MENU ESTARA INSTALADO DESPUES DE LA INSTALACION"
   msg -bar
   REBOOT_TIMEOUT="$1"
   while [ $REBOOT_TIMEOUT -gt 0 ]; do
@@ -104,7 +93,7 @@ time_reboot() {
   reboot
 }
 
-# 7. INSTALAR DEPENDENCIAS
+# 6. INSTALAR DEPENDENCIAS (mejorado con verificaciones)
 dependencias() {
   rm -rf /root/paknoinstall.log >/dev/null 2>&1
   dpkg --configure -a >/dev/null 2>&1
@@ -115,15 +104,16 @@ dependencias() {
   for i in $soft; do
     echo -e "\e[1;97m        INSTALANDO PAQUETE \e[93m ------ \e[36m $i"
     barra_intall "apt-get install $i -y"
+    if [ $? -ne 0 ]; then
+      echo -e "\e[1;31m        ERROR INSTALANDO $i. INTENTANDO NUEVAMENTE..."
+      apt-get install $i -y --fix-missing
+    fi
   done
 }
 
-# 8. INSTALACIÓN INICIAL
+# 7. INSTALACIÓN INICIAL (sin confirmación de IP)
 install_inicial() {
   clear && clear
-  
-  # Verificar IP
-  fun_ip
   
   # Cambiar pass ROOT
   msg -bar
@@ -134,7 +124,7 @@ install_inicial() {
   echo -ne "\e[1;97m Seleccione  \e[1;31m[\e[1;93m S \e[1;31m/\e[1;93m N \e[1;31m]\e[1;97m: \e[1;93m" && read pass_root_option
   [[ "$pass_root_option" = "s" || "$pass_root_option" = "S" ]] && pass_root
   
-  # Actualizar sistema
+  # Actualizar sistema (mejorado)
   msg -bar
   echo -e "\e[1;93m\a\a\a      SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES"
   msg -bar
@@ -148,11 +138,14 @@ install_inicial() {
   echo -e " \e[5m\e[1;100m   =====>> ►►     VPS-SN     ◄◄ <<=====    \e[1;37m"
   msg -bar
   
-  apt update -y
-  apt upgrade -y
+  apt update -y && apt upgrade -y
+  if [ $? -ne 0 ]; then
+    echo -e "\e[1;31m        ERROR EN ACTUALIZACION. INTENTANDO NUEVAMENTE..."
+    apt update -y --fix-missing && apt upgrade -y
+  fi
 }
 
-# 9. INSTALAR PAQUETES
+# 8. INSTALAR PAQUETES
 install_paquetes() {
   clear && clear
   msg -bar
@@ -164,14 +157,8 @@ install_paquetes() {
   msg -bar
 }
 
-# 10. INSTALAR VPS-SN
+# 9. INSTALAR VPS-SN (reseller por defecto: Sin_Nombre22)
 install_VPS_SN() {
-  clear && clear
-  msg -bar
-  echo -ne "\033[1;97m Digite su slogan: \033[1;32m" && read slogan
-  tput cuu1 && tput dl1
-  echo -e "$slogan"
-  msg -bar
   clear && clear
   
   mkdir -p /etc/VPS-SN >/dev/null 2>&1
@@ -186,7 +173,7 @@ install_VPS_SN() {
   
   rm -rf /usr/bin/menu /usr/bin/adm /usr/bin/VPS-SN 2>/dev/null
   
-  echo "$slogan" >/etc/VPS-SN/tmp/message.txt
+  echo "Sin_Nombre22" >/etc/VPS-SN/tmp/message.txt
   
   echo "/etc/VPS-SN/menu" >/usr/bin/menu && chmod +x /usr/bin/menu
   echo "/etc/VPS-SN/menu" >/usr/bin/adm && chmod +x /usr/bin/adm
