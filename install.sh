@@ -34,35 +34,93 @@ SCPinstal="$HOME/install"
 rm -rf /etc/localtime &>/dev/null
 ln -s /usr/share/zoneinfo/America/Mexico_City /etc/localtime &>/dev/null
 
-# ========== FUNCIONES ADICIONALES ==========
-barra_intall() {
-    local command="$1"
-    local pid
-    eval "$command" &
-    pid=$!
+# ========== SISTEMA MEJORADO DE INSTALACIÓN DE DEPENDENCIAS ==========
+install_package() {
+    local package="$1"
+    local max_attempts=2
+    local attempt=1
     
-    while kill -0 $pid 2>/dev/null; do
-        for i in '|' '/' '-' '\\'; do
-            echo -ne "\e[1D$i"
-            sleep 0.1
-        done
+    while [ $attempt -le $max_attempts ]; do
+        if apt-get install -y "$package" &>/dev/null; then
+            echo -e "\e[1;92m ✅"
+            return 0
+        else
+            if [ $attempt -eq $max_attempts ]; then
+                echo -e "\e[1;91m ❌"
+                return 1
+            else
+                echo -ne "\e[1;93m 🔄"
+                sleep 2
+                apt-get update &>/dev/null
+            fi
+        fi
+        attempt=$((attempt + 1))
     done
-    echo -ne "\e[1D "
 }
 
-barra_intallb() {
-    local command="$1"
-    local pid
-    eval "$command" &
-    pid=$!
+dependencias() {
+    clear
+    title "=====>> ►►     VPS-SN SCRIPT     ◄◄ <<====="
+    print_center -ama "-- INSTALACIÓN DE DEPENDENCIAS --"
+    echo ""
     
-    while kill -0 $pid 2>/dev/null; do
-        for i in '/' '|' '\\' '-'; do
-            echo -ne "\e[1D$i"
-            sleep 0.1
-        done
+    # Actualizar lista de paquetes
+    print_center -azu "ACTUALIZANDO LISTA DE PAQUETES..."
+    apt-get update &>/dev/null
+    
+    # Lista de paquetes a instalar
+    local packages=(
+        "sudo" "bsdmainutils" "zip" "screen" "unzip" "ufw" "curl" 
+        "python3" "python3-pip" "openssl" "cron" "iptables" "lsof" 
+        "pv" "boxes" "at" "mlocate" "gawk" "bc" "jq" "npm" "nodejs" 
+        "socat" "netcat" "netcat-traditional" "net-tools" "cowsay" 
+        "figlet" "lolcat" "apache2"
+    )
+    
+    local failed_packages=()
+    
+    for package in "${packages[@]}"; do
+        echo -ne "\e[1;97m Instalando: \e[1;96m$package\e[0m"
+        if ! install_package "$package"; then
+            failed_packages+=("$package")
+        fi
     done
-    echo -ne "\e[1D "
+    
+    # Mostrar resumen
+    echo ""
+    if [ ${#failed_packages[@]} -eq 0 ]; then
+        print_center -verd "TODAS LAS DEPENDENCIAS SE INSTALARON CORRECTAMENTE"
+    else
+        print_center -verm "ALGUNOS PAQUETES NO SE PUDIERON INSTALAR:"
+        for failed in "${failed_packages[@]}"; do
+            echo -e "\e[1;91m   $failed"
+        done
+        echo ""
+        print_center -ama "Se reintentarán los paquetes fallidos..."
+        
+        # Reintentar paquetes fallidos
+        local retry_failed=()
+        for package in "${failed_packages[@]}"; do
+            echo -ne "\e[1;97m Reintentando: \e[1;96m$package\e[0m"
+            if install_package "$package"; then
+                echo -e "\e[1;92m ✅ (Reintento exitoso)"
+            else
+                retry_failed+=("$package")
+            fi
+        done
+        
+        if [ ${#retry_failed[@]} -gt 0 ]; then
+            echo ""
+            print_center -verm "PAQUETES QUE NO SE PUDIERON INSTALAR:"
+            for failed in "${retry_failed[@]}"; do
+                echo -e "\e[1;91m   $failed"
+            done
+        fi
+    fi
+    
+    echo ""
+    print_center -azu "FINALIZANDO INSTALACIÓN DE DEPENDENCIAS"
+    sleep 2
 }
 
 # ========== FUNCIONES PRINCIPALES ==========
@@ -73,13 +131,6 @@ os_system() {
   case $distro in
   Debian) vercion=$(echo $system | awk '{print $3}' | cut -d '.' -f1) ;;
   Ubuntu) vercion=$(echo $system | awk '{print $2}' | cut -d '.' -f1,2) ;;
-  esac
-}
-
-repo() {
-  link="https://raw.githubusercontent.com/SINNOMBRE22/VPS-SN/main/Repositorios/$1.list"
-  case $1 in
-  8 | 9 | 10 | 11 | 16.04 | 18.04 | 20.04 | 20.10 | 21.04 | 21.10 | 22.04) wget -O /etc/apt/sources.list ${link} &>/dev/null ;;
   esac
 }
 
@@ -137,7 +188,6 @@ install_inicial() {
   
   #-- CONFIGURACION BASICA
   os_system
-  repo "${vercion}"
   title "=====>> ►►     VPS-SN SCRIPT     ◄◄ <<====="
   print_center -ama "   PREPARANDO INSTALACIÓN | VERSION: $v22"
   
@@ -148,12 +198,11 @@ install_inicial() {
   echo ""
   print_center -azu "◽️ DESACTIVANDO PASS ALFANUMERICO"
   
-  [[ $(dpkg --get-selections | grep -w "libpam-cracklib" | head -1) ]] || barra_intallb "apt-get install libpam-cracklib -y &>/dev/null"
+  [[ $(dpkg --get-selections | grep -w "libpam-cracklib" | head -1) ]] || apt-get install libpam-cracklib -y &>/dev/null
   echo -e '# Modulo Pass Simple
 password [success=1 default=ignore] pam_unix.so obscure sha512
 password requisite pam_deny.so
 password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pam.d/common-password
-  [[ $(dpkg --get-selections | grep -w "libpam-cracklib" | head -1) ]] && barra_intallb "date"
   service ssh restart >/dev/null 2>&1
   echo ""
   
@@ -171,8 +220,8 @@ password required pam_permit.so' >/etc/pam.d/common-password && chmod +x /etc/pa
   title "AGREGAR Y EDITAR PASS ROOT"
   print_center -ama "¿CAMBIAR PASS ROOT?"
   echo ""
-  print_center -ama "Seleccione [S/N]: "
-  read -n 1 pass_root_input
+    print_center -ama "Seleccione [S/N]: "
+    read -n 1 pass_root_input
   [[ "$pass_root_input" = "s" || "$pass_root_input" = "S" ]] && pass_root
   
   print_center -ama "SE PROCEDERA A INSTALAR LAS ACTUALIZACIONES"
@@ -204,21 +253,6 @@ time_reboot() {
   reboot
 }
 
-dependencias() {
-  rm -rf /root/paknoinstall.log >/dev/null 2>&1
-  rm -rf /root/packinstall.log >/dev/null 2>&1
-  dpkg --configure -a >/dev/null 2>&1
-  apt -f install -y >/dev/null 2>&1
-  soft="sudo bsdmainutils zip screen unzip ufw curl python python3 python3-pip openssl cron iptables lsof pv boxes at mlocate gawk bc jq curl npm nodejs socat netcat netcat-traditional net-tools cowsay figlet lolcat apache2"
-
-  for i in $soft; do
-    print_center -azu "INSTALANDO PAQUETE: $i"
-    barra_intall "apt-get install $i -y"
-  done
-  rm -rf /root/paknoinstall.log >/dev/null 2>&1
-  rm -rf /root/packinstall.log >/dev/null 2>&1
-}
-
 install_paquetes() {
   clear && clear
   /bin/cp /etc/skel/.bashrc ~/
@@ -227,8 +261,8 @@ install_paquetes() {
   dependencias
   sed -i "s;Listen 80;Listen 81;g" /etc/apache2/ports.conf >/dev/null 2>&1
   service apache2 restart >/dev/null 2>&1
-  [[ $(sudo lsof -i :81) ]] || ESTATUSP=$(print_center -verm ">>> FALLO DE INSTALACIÓN EN APACHE <<<") &>/dev/null
-  [[ $(sudo lsof -i :81) ]] && ESTATUSP=$(print_center -verd "PUERTO APACHE ACTIVO CON EXITO") &>/dev/null
+  [[ $(sudo lsof -i :81) ]] || print_center -verm ">>> FALLO DE INSTALACIÓN EN APACHE <<<"
+  [[ $(sudo lsof -i :81) ]] && print_center -verd "PUERTO APACHE ACTIVO CON EXITO"
   echo ""
   print_center -verd "REMOVIENDO PAQUETES OBSOLETOS - OK"
   apt autoremove -y &>/dev/null
@@ -318,4 +352,4 @@ done
 install_VPS_SN
 
 mv -f ${module} /etc/VPS-SN/module
-time_reboot "10"
+time_reboot "5"
